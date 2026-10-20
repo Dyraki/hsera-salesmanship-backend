@@ -1,0 +1,150 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+// 1. Master District (Teritori Management)
+model MstDistrict {
+  id          String   @id @default(uuid()) @db.Uuid
+  ouKode      String   @map("ou_kode") @db.VarChar(20)
+  kode        String   @db.VarChar(10)
+  karyawanId  String   @map("karyawan_id") @db.VarChar(50)
+  status      String   @default("AKTIF") @db.VarChar(10)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy   String?  @map("created_by") @db.VarChar(50)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy   String?  @map("updated_by") @db.VarChar(50)
+
+  targets     MstTarget[]
+  rekapHarian TrxRekapHarian[]
+
+  @@unique([ouKode, kode], name: "ou_kode_kode_unique")
+  @@map("mst_district")
+}
+
+// 2. Master Brand (Produk Brand)
+model MstBrand {
+  id        String   @id @default(uuid()) @db.Uuid
+  kode      String   @unique @db.VarChar(20)
+  nama      String   @db.VarChar(100)
+  kategori  String   @db.VarChar(20)
+  urutan    Int      @default(1)
+  status    String   @default("AKTIF") @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy String?  @map("created_by") @db.VarChar(50)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy String?  @map("updated_by") @db.VarChar(50)
+
+  rekapNilai TrxRekapHarianNilai[]
+
+  @@map("mst_brand")
+}
+
+// 3. Master Notasi (Katalog Notasi Input & Header)
+model MstNotasi {
+  id             String   @id @default(uuid()) @db.Uuid
+  kode           String   @unique @db.VarChar(50)
+  nama           String   @db.VarChar(150)
+  levelInput     String   @map("level_input") @db.VarChar(20) // BRAND, HARIAN, TURUNAN, TARGET
+  kelompokTampil String?  @map("kelompok_tampil") @db.VarChar(20) // STATUS, KUANTITAS, FACEUP, HARIAN
+  rumus          String?  @db.VarChar(200)
+  satuan         String   @db.VarChar(20) // OUTLET, QTY
+  urutan         Int      @default(1)
+  status         String   @default("AKTIF") @db.VarChar(10)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy      String?  @map("created_by") @db.VarChar(50)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy      String?  @map("updated_by") @db.VarChar(50)
+
+  rekapNilai     TrxRekapHarianNilai[]
+
+  @@map("mst_notasi")
+}
+
+// 4. Master Target (Setup Target)
+model MstTarget {
+  id            String       @id @default(uuid()) @db.Uuid
+  jenisTarget   String       @map("jenis_target") @db.VarChar(20) // KUNJUNGAN, BD, EC, FACEUP, VOLUME
+  districtId    String?      @map("district_id") @db.Uuid
+  hariKunjungan Int?         @map("hari_kunjungan") @db.SmallInt // 1..6 (1=Senin, 6=Sabtu)
+  nilai         Decimal      @db.Decimal(14, 2)
+  berlakuDari   DateTime     @map("berlaku_dari") @db.Date
+  berlakuSampai DateTime?    @map("berlaku_sampai") @db.Date
+  status        String       @default("AKTIF") @db.VarChar(10)
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy     String?      @map("created_by") @db.VarChar(50)
+  updatedAt     DateTime     @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy     String?      @map("updated_by") @db.VarChar(50)
+
+  district      MstDistrict? @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@map("mst_target")
+}
+
+// 5. Transaksi Rekap Harian (1 Salesman x 1 Hari)
+model TrxRekapHarian {
+  id              String   @id @default(uuid()) @db.Uuid
+  districtId      String   @map("district_id") @db.Uuid
+  tglKunjungan    DateTime @map("tgl_kunjungan") @db.Date
+  hariKunjungan   Int      @map("hari_kunjungan") @db.SmallInt // 1..6 ISO
+  kodeMinggu      Int      @map("kode_minggu") // YYYYWW ISO
+  karyawanId      String   @map("karyawan_id") @db.VarChar(50)
+  ouKode          String   @map("ou_kode") @db.VarChar(20)
+  jenisRekap      String   @default("NORMAL") @map("jenis_rekap") @db.VarChar(30) // NORMAL, TIDAK_ADA_KUNJUNGAN
+  alasan          String?  @db.VarChar(150)
+  jumlahKunjungan Int      @default(0) @map("jumlah_kunjungan")
+  totalEc         Int      @default(0) @map("total_ec")
+  bdOutlet        Int      @default(0) @map("bd_outlet")
+  volumeGg        Decimal? @map("volume_gg") @db.Decimal(14, 2)
+  statusRekap     String   @default("DRAFT") @map("status_rekap") @db.VarChar(20) // DRAFT, FINAL
+  status          String   @default("AKTIF") @db.VarChar(10) // AKTIF, NONAKTIF
+  catatan         String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy       String?  @map("created_by") @db.VarChar(50)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy       String?  @map("updated_by") @db.VarChar(50)
+
+  district        MstDistrict @relation(fields: [districtId], references: [id], onDelete: Restrict)
+  nilaiList       TrxRekapHarianNilai[]
+
+  @@map("trx_rekap_harian")
+}
+
+// 6. Transaksi Rekap Harian Nilai (Matriks Brand x Notasi)
+model TrxRekapHarianNilai {
+  id        String   @id @default(uuid()) @db.Uuid
+  rekapId   String   @map("rekap_id") @db.Uuid
+  brandId   String   @map("brand_id") @db.Uuid
+  notasiId  String   @map("notasi_id") @db.Uuid
+  nilai     Decimal  @default(0) @db.Decimal(14, 2)
+  status    String   @default("AKTIF") @db.VarChar(10)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy String?  @map("created_by") @db.VarChar(50)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy String?  @map("updated_by") @db.VarChar(50)
+
+  rekap     TrxRekapHarian @relation(fields: [rekapId], references: [id], onDelete: Cascade)
+  brand     MstBrand       @relation(fields: [brandId], references: [id], onDelete: Restrict)
+  notasi    MstNotasi      @relation(fields: [notasiId], references: [id], onDelete: Restrict)
+
+  @@unique([rekapId, brandId, notasiId], name: "rekap_brand_notasi_unique")
+  @@map("trx_rekap_harian_nilai")
+}
+
+// 7. Kontrol Kunci Minggu
+model SysKunciMinggu {
+  kodeMinggu Int      @id @map("kode_minggu") // YYYYWW
+  status     String   @default("AKTIF") @db.VarChar(10) // AKTIF = LOCKED, NONAKTIF = UNLOCKED
+  catatan    String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  createdBy  String?  @map("created_by") @db.VarChar(50)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedBy  String?  @map("updated_by") @db.VarChar(50)
+
+  @@map("sys_kunci_minggu")
+}
