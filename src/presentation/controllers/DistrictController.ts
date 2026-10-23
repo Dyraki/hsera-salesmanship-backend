@@ -14,6 +14,22 @@ const createDistrictUC = new CreateDistrictUseCase(districtRepo);
 const updateDistrictUC = new UpdateDistrictUseCase(districtRepo);
 const deleteDistrictUC = new DeleteDistrictUseCase(districtRepo);
 
+function getDescendantKodes(unitId: string, allUnits: any[]): string[] {
+  const result: string[] = [];
+  const queue = [unitId];
+  while (queue.length > 0) {
+    const curId = queue.shift()!;
+    const children = allUnits.filter((u: any) => u.parentId === curId);
+    for (const child of children) {
+      if (!result.includes(child.kode)) {
+        result.push(child.kode);
+        queue.push(child.id);
+      }
+    }
+  }
+  return result;
+}
+
 export class DistrictController {
   static async getAll(req: Request, res: Response, next: NextFunction) {
     try {
@@ -25,8 +41,19 @@ export class DistrictController {
         search: search ? String(search) : undefined,
       };
 
-      if (ouKode) {
-        filter.ouKode = String(ouKode);
+      if (ouKode && ouKode !== 'all') {
+        const allowedOus = await authBackendService.getOperationUnits(user.token);
+        const selectedOu = allowedOus.find((u: any) => u.kode === String(ouKode));
+        if (selectedOu) {
+          const descendantKodes = getDescendantKodes(selectedOu.id, allowedOus);
+          if (descendantKodes.length > 0) {
+            filter.ouKodeIn = [selectedOu.kode, ...descendantKodes];
+          } else {
+            filter.ouKode = String(ouKode);
+          }
+        } else {
+          filter.ouKode = String(ouKode);
+        }
       } else if (!user.scope.isSuperAdmin) {
         // Scoped to user's permitted unit codes if not super admin
         const allowedOus = await authBackendService.getOperationUnits(user.token);
@@ -42,6 +69,7 @@ export class DistrictController {
           kode: d.kode,
           karyawanId: d.karyawanId,
           karyawanName: d.karyawanName,
+          channels: d.channels,
           status: d.status,
           createdAt: d.createdAt,
           updatedAt: d.updatedAt,
@@ -65,6 +93,7 @@ export class DistrictController {
           kode: district.kode,
           karyawanId: district.karyawanId,
           karyawanName: district.karyawanName,
+          channels: district.channels,
           status: district.status,
           createdAt: district.createdAt,
           updatedAt: district.updatedAt,
@@ -83,6 +112,7 @@ export class DistrictController {
         kode: req.body.kode,
         karyawanId: req.body.karyawanId,
         status: req.body.status,
+        channelIds: req.body.channelIds,
         createdBy: user.userId,
       });
 
@@ -105,6 +135,7 @@ export class DistrictController {
         kode: req.body.kode,
         karyawanId: req.body.karyawanId,
         status: req.body.status,
+        channelIds: req.body.channelIds,
         updatedBy: user.userId,
       });
 

@@ -196,16 +196,41 @@ export class GetWeeklyMonitoringUseCase {
         );
         if (dFlat) return dFlat.nilai;
 
+        // Priority 2a: OU-specific + specific dayNum
+        const ouDay = activeTargets.find(
+          (t) => !t.districtId && t.ouKode === dist.ouKode && t.jenisTarget === jenis && t.hariKunjungan === dayNum && matchDate(t)
+        );
+        if (ouDay) return ouDay.nilai;
+
+        // Priority 2b: OU-specific + Senin-Jumat (7) jika dayNum adalah 1..5
+        if (dayNum >= 1 && dayNum <= 5) {
+          const ouWeekday = activeTargets.find(
+            (t) => !t.districtId && t.ouKode === dist.ouKode && t.jenisTarget === jenis && t.hariKunjungan === 7 && matchDate(t)
+          );
+          if (ouWeekday) return ouWeekday.nilai;
+        }
+
+        // Priority 2c: OU-specific flat (hariKunjungan null/undefined)
+        const ouFlat = activeTargets.find(
+          (t) =>
+            !t.districtId &&
+            t.ouKode === dist.ouKode &&
+            t.jenisTarget === jenis &&
+            (t.hariKunjungan === null || t.hariKunjungan === undefined) &&
+            matchDate(t)
+        );
+        if (ouFlat) return ouFlat.nilai;
+
         // Priority 3: Global default + specific dayNum
         const gDay = activeTargets.find(
-          (t) => !t.districtId && t.jenisTarget === jenis && t.hariKunjungan === dayNum && matchDate(t)
+          (t) => !t.districtId && !t.ouKode && t.jenisTarget === jenis && t.hariKunjungan === dayNum && matchDate(t)
         );
         if (gDay) return gDay.nilai;
 
         // Priority 3b: Global default + Senin-Jumat (7) jika dayNum adalah 1..5
         if (dayNum >= 1 && dayNum <= 5) {
           const gWeekday = activeTargets.find(
-            (t) => !t.districtId && t.jenisTarget === jenis && t.hariKunjungan === 7 && matchDate(t)
+            (t) => !t.districtId && !t.ouKode && t.jenisTarget === jenis && t.hariKunjungan === 7 && matchDate(t)
           );
           if (gWeekday) return gWeekday.nilai;
         }
@@ -214,6 +239,7 @@ export class GetWeeklyMonitoringUseCase {
         const gFlat = activeTargets.find(
           (t) =>
             !t.districtId &&
+            !t.ouKode &&
             t.jenisTarget === jenis &&
             (t.hariKunjungan === null || t.hariKunjungan === undefined) &&
             matchDate(t)

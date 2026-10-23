@@ -13,6 +13,7 @@ export class GetTargetsUseCase {
 export interface SaveTargetDTO {
   id?: string;
   jenisTarget: JenisTarget;
+  ouKode?: string | null;
   districtId?: string | null;
   hariKunjungan?: number | null;
   nilai: number;
@@ -54,6 +55,7 @@ export class SaveTargetUseCase {
       }
       return await this.targetRepo.update(dto.id, {
         jenisTarget: dto.jenisTarget,
+        ouKode: dto.ouKode !== undefined ? dto.ouKode : existing.ouKode,
         districtId: dto.districtId !== undefined ? dto.districtId : existing.districtId,
         hariKunjungan: dto.hariKunjungan !== undefined ? dto.hariKunjungan : existing.hariKunjungan,
         nilai: Number(dto.nilai),
@@ -65,6 +67,7 @@ export class SaveTargetUseCase {
     } else {
       return await this.targetRepo.create({
         jenisTarget: dto.jenisTarget,
+        ouKode: dto.ouKode || null,
         districtId: dto.districtId || null,
         hariKunjungan: dto.hariKunjungan || null,
         nilai: Number(dto.nilai),

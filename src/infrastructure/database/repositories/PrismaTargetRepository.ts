@@ -7,6 +7,7 @@ export class PrismaTargetRepository implements ITargetRepository {
     return new Target({
       id: raw.id,
       jenisTarget: raw.jenisTarget as JenisTarget,
+      ouKode: raw.ouKode || raw.district?.ouKode || null,
       districtId: raw.districtId,
       hariKunjungan: raw.hariKunjungan,
       nilai: Number(raw.nilai),
@@ -30,6 +31,34 @@ export class PrismaTargetRepository implements ITargetRepository {
     if (filter?.jenisTarget) {
       where.jenisTarget = filter.jenisTarget;
     }
+    if (filter?.ouKode) {
+      if (filter.includeGlobal) {
+        where.OR = [
+          { ouKode: filter.ouKode },
+          { ouKode: null, districtId: null },
+          { district: { ouKode: filter.ouKode } },
+        ];
+      } else {
+        where.OR = [
+          { ouKode: filter.ouKode },
+          { district: { ouKode: filter.ouKode } },
+        ];
+      }
+    } else if (filter?.ouKodeIn && filter.ouKodeIn.length > 0) {
+      if (filter.includeGlobal) {
+        where.OR = [
+          { ouKode: { in: filter.ouKodeIn } },
+          { ouKode: null, districtId: null },
+          { district: { ouKode: { in: filter.ouKodeIn } } },
+        ];
+      } else {
+        where.OR = [
+          { ouKode: { in: filter.ouKodeIn } },
+          { district: { ouKode: { in: filter.ouKodeIn } } },
+        ];
+      }
+    }
+
     if (filter?.districtId !== undefined) {
       where.districtId = filter.districtId;
     } else if (filter?.districtIdIn && filter.districtIdIn.length > 0) {
@@ -69,8 +98,18 @@ export class PrismaTargetRepository implements ITargetRepository {
     districtId: string | null,
     jenisTarget: JenisTarget,
     date: Date,
-    hariKunjungan?: number | null
+    hariKunjungan?: number | null,
+    ouKodeInput?: string | null
   ): Promise<Target | null> {
+    let ouKode = ouKodeInput;
+    if (districtId && !ouKode) {
+      const dist = await prisma.mstDistrict.findUnique({
+        where: { id: districtId },
+        select: { ouKode: true },
+      });
+      if (dist) ouKode = dist.ouKode;
+    }
+
     const where: any = {
       jenisTarget,
       status: 'AKTIF',
@@ -81,56 +120,57 @@ export class PrismaTargetRepository implements ITargetRepository {
       ],
     };
 
-    if (districtId) {
-      where.OR = [
-        { districtId: districtId },
-        { districtId: null },
-      ];
-    } else {
-      where.districtId = null;
+    const scopeConditions: any[] = [{ ouKode: null, districtId: null }];
+    if (ouKode) {
+      scopeConditions.push({ ouKode, districtId: null });
     }
+    if (districtId) {
+      scopeConditions.push({ districtId });
+    }
+    where.AND = [{ OR: scopeConditions }];
 
     if (hariKunjungan !== undefined && hariKunjungan !== null) {
       const allowedHari: (number | null)[] = [hariKunjungan, null];
       if (hariKunjungan >= 1 && hariKunjungan <= 5) {
-        allowedHari.push(7); // Target Senin - Jumat (7) juga berlaku untuk hari 1..5
+        allowedHari.push(7); // Target Senin - Jumat (7)
       }
-      where.AND = [
-        {
-          OR: allowedHari.map((h) => ({ hariKunjungan: h })),
-        },
-      ];
+      where.AND.push({
+        OR: allowedHari.map((h) => ({ hariKunjungan: h })),
+      });
     }
 
     const rows = await prisma.mstTarget.findMany({
       where,
       include: { district: true },
       orderBy: [
-        { districtId: 'desc' }, // specific district first
         { berlakuDari: 'desc' },
       ],
     });
 
     if (rows.length === 0) return null;
 
-    if (hariKunjungan !== undefined && hariKunjungan !== null) {
-      const getRank = (r: any) => {
-        const isDistrictSpecific = !!r.districtId;
-        const isExactDay = r.hariKunjungan === hariKunjungan;
-        const isWeekday = r.hariKunjungan === 7;
-        if (isDistrictSpecific) {
-          if (isExactDay) return 1;
-          if (isWeekday) return 2;
-          return 3;
-        } else {
-          if (isExactDay) return 4;
-          if (isWeekday) return 5;
-          return 6;
-        }
-      };
-      rows.sort((a, b) => getRank(a) - getRank(b));
-    }
+    const getRank = (r: any) => {
+      const isDistrictSpecific = !!r.districtId && r.districtId === districtId;
+      const isOuSpecific = !r.districtId && !!r.ouKode && r.ouKode === ouKode;
+      const isExactDay = r.hariKunjungan === hariKunjungan;
+      const isWeekday = r.hariKunjungan === 7;
 
+      if (isDistrictSpecific) {
+        if (isExactDay) return 1;
+        if (isWeekday) return 2;
+        return 3;
+      } else if (isOuSpecific) {
+        if (isExactDay) return 4;
+        if (isWeekday) return 5;
+        return 6;
+      } else {
+        if (isExactDay) return 7;
+        if (isWeekday) return 8;
+        return 9;
+      }
+    };
+
+    rows.sort((a, b) => getRank(a) - getRank(b));
     return this.toDomain(rows[0]);
   }
 
@@ -138,6 +178,7 @@ export class PrismaTargetRepository implements ITargetRepository {
     const raw = await prisma.mstTarget.create({
       data: {
         jenisTarget: data.jenisTarget,
+        ouKode: data.ouKode || null,
         districtId: data.districtId || null,
         hariKunjungan: data.hariKunjungan || null,
         nilai: data.nilai,
@@ -154,6 +195,7 @@ export class PrismaTargetRepository implements ITargetRepository {
   async update(id: string, data: Partial<TargetProps>): Promise<Target> {
     const updateData: any = {};
     if (data.jenisTarget !== undefined) updateData.jenisTarget = data.jenisTarget;
+    if (data.ouKode !== undefined) updateData.ouKode = data.ouKode;
     if (data.districtId !== undefined) updateData.districtId = data.districtId;
     if (data.hariKunjungan !== undefined) updateData.hariKunjungan = data.hariKunjungan;
     if (data.nilai !== undefined) updateData.nilai = data.nilai;

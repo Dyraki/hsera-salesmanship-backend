@@ -7,6 +7,7 @@ export interface CreateDistrictDTO {
   kode: string;
   karyawanId: string;
   status?: string;
+  channelIds?: string[];
   createdBy?: string;
 }
 
@@ -32,6 +33,7 @@ export class CreateDistrictUseCase {
       kode: cleanKode,
       karyawanId: dto.karyawanId,
       status: dto.status || 'AKTIF',
+      channelIds: dto.channelIds,
       createdBy: dto.createdBy,
     });
   }

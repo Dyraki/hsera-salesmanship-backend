@@ -113,6 +113,23 @@ async function main() {
   }
   console.log(`✓ Seeded sample districts`);
 
+  // 5. Seed Channels
+  const channels = [
+    { kode: 'AGEN', nama: 'Agen', urutan: 1 },
+    { kode: 'WHOLESALE', nama: 'Wholesale', urutan: 2 },
+    { kode: 'RETAIL', nama: 'Retail', urutan: 3 },
+    { kode: 'MTI', nama: 'MTI', urutan: 4 },
+  ];
+
+  for (const c of channels) {
+    await prisma.mstChannel.upsert({
+      where: { kode: c.kode },
+      create: c,
+      update: { nama: c.nama, urutan: c.urutan },
+    });
+  }
+  console.log(`✓ Seeded ${channels.length} Trade Channels`);
+
   console.log('--- SEEDING COMPLETED SUCCESSFULLY ---');
 }
 

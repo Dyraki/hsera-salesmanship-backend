@@ -23,11 +23,13 @@ export interface CallsheetFormResponse {
     ouKode: string;
     karyawanId: string;
     karyawanName?: string;
+    channels?: Array<{ id: string; kode: string; nama: string }>;
   };
   targets: {
     kunjungan: number;
     bd: number;
     ec: number;
+    volume: number;
   };
   brands: Array<{
     id: string;
@@ -89,10 +91,11 @@ export class GetCallsheetFormDataUseCase {
     ]);
 
     // Load targets
-    const [targetKunjungan, targetBd, targetEc] = await Promise.all([
-      this.targetRepo.findActiveTarget(districtId, 'KUNJUNGAN', dateObj, weekInfo.hariKunjungan),
-      this.targetRepo.findActiveTarget(districtId, 'BD', dateObj, weekInfo.hariKunjungan),
-      this.targetRepo.findActiveTarget(districtId, 'EC', dateObj, weekInfo.hariKunjungan),
+    const [targetKunjungan, targetBd, targetEc, targetVolume] = await Promise.all([
+      this.targetRepo.findActiveTarget(districtId, 'KUNJUNGAN', dateObj, weekInfo.hariKunjungan, district.ouKode),
+      this.targetRepo.findActiveTarget(districtId, 'BD', dateObj, weekInfo.hariKunjungan, district.ouKode),
+      this.targetRepo.findActiveTarget(districtId, 'EC', dateObj, weekInfo.hariKunjungan, district.ouKode),
+      this.targetRepo.findActiveTarget(districtId, 'VOLUME', dateObj, weekInfo.hariKunjungan, district.ouKode),
     ]);
 
     // Lookup existing rekap harian
@@ -133,11 +136,13 @@ export class GetCallsheetFormDataUseCase {
         ouKode: district.ouKode,
         karyawanId: district.karyawanId,
         karyawanName: salesman?.namaLengkap || district.karyawanId,
+        channels: district.channels || [],
       },
       targets: {
         kunjungan: targetKunjungan ? targetKunjungan.nilai : 40,
         bd: targetBd ? targetBd.nilai : 20,
         ec: targetEc ? targetEc.nilai : 30,
+        volume: targetVolume ? targetVolume.nilai : (weekInfo.hariKunjungan === 6 ? 70 : 140),
       },
       brands: brands.map((b) => ({
         id: b.id,

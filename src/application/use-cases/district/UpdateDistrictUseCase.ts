@@ -7,6 +7,7 @@ export interface UpdateDistrictDTO {
   kode?: string;
   karyawanId?: string;
   status?: string;
+  channelIds?: string[];
   updatedBy?: string;
 }
 
@@ -34,6 +35,7 @@ export class UpdateDistrictUseCase {
       kode: targetKode,
       karyawanId: dto.karyawanId !== undefined ? dto.karyawanId : existing.karyawanId,
       status: dto.status !== undefined ? dto.status : existing.status,
+      channelIds: dto.channelIds,
       updatedBy: dto.updatedBy,
     });
   }

@@ -93,7 +93,9 @@ export interface WeeklyDistrictReportResponse {
       gap: number;
     };
     ec: {
+      target: number;
       actual: number;
+      percentFromTarget: number;
       percentFromKunjungan: number;
       nonTransaksi: number;
     };
@@ -267,16 +269,41 @@ export class GetWeeklyDistrictReportUseCase {
       );
       if (dFlat) return dFlat.nilai;
 
+      // Priority 2a: OU-specific + specific dayNum
+      const ouDay = activeTargets.find(
+        (t) => !t.districtId && t.ouKode === district.ouKode && t.jenisTarget === jenis && t.hariKunjungan === dayNum && matchDate(t)
+      );
+      if (ouDay) return ouDay.nilai;
+
+      // Priority 2b: OU-specific + Senin-Jumat (7)
+      if (dayNum >= 1 && dayNum <= 5) {
+        const ouWeekday = activeTargets.find(
+          (t) => !t.districtId && t.ouKode === district.ouKode && t.jenisTarget === jenis && t.hariKunjungan === 7 && matchDate(t)
+        );
+        if (ouWeekday) return ouWeekday.nilai;
+      }
+
+      // Priority 2c: OU-specific flat
+      const ouFlat = activeTargets.find(
+        (t) =>
+          !t.districtId &&
+          t.ouKode === district.ouKode &&
+          t.jenisTarget === jenis &&
+          (t.hariKunjungan === null || t.hariKunjungan === undefined) &&
+          matchDate(t)
+      );
+      if (ouFlat) return ouFlat.nilai;
+
       // Priority 3: Global default + specific dayNum
       const gDay = activeTargets.find(
-        (t) => !t.districtId && t.jenisTarget === jenis && t.hariKunjungan === dayNum && matchDate(t)
+        (t) => !t.districtId && !t.ouKode && t.jenisTarget === jenis && t.hariKunjungan === dayNum && matchDate(t)
       );
       if (gDay) return gDay.nilai;
 
       // Priority 3b: Global default + Senin-Jumat (7)
       if (dayNum >= 1 && dayNum <= 5) {
         const gWeekday = activeTargets.find(
-          (t) => !t.districtId && t.jenisTarget === jenis && t.hariKunjungan === 7 && matchDate(t)
+          (t) => !t.districtId && !t.ouKode && t.jenisTarget === jenis && t.hariKunjungan === 7 && matchDate(t)
         );
         if (gWeekday) return gWeekday.nilai;
       }
@@ -285,6 +312,7 @@ export class GetWeeklyDistrictReportUseCase {
       const gFlat = activeTargets.find(
         (t) =>
           !t.districtId &&
+          !t.ouKode &&
           t.jenisTarget === jenis &&
           (t.hariKunjungan === null || t.hariKunjungan === undefined) &&
           matchDate(t)
@@ -354,6 +382,8 @@ export class GetWeeklyDistrictReportUseCase {
       actualKunjunganTotal > 0
         ? Math.round((actualEcTotal / actualKunjunganTotal) * 1000) / 10
         : 0;
+    const percentEcTarget =
+      targetEcTotal > 0 ? Math.round((actualEcTotal / targetEcTotal) * 100) : 0;
     const percentBdTarget =
       targetBdTotal > 0 ? Math.round((actualBdTotal / targetBdTotal) * 1000) / 10 : 0;
     const percentBdKunjungan =
@@ -582,7 +612,9 @@ export class GetWeeklyDistrictReportUseCase {
           gap: actualKunjunganTotal - targetKunjunganTotal,
         },
         ec: {
+          target: targetEcTotal,
           actual: actualEcTotal,
+          percentFromTarget: percentEcTarget,
           percentFromKunjungan: percentEc,
           nonTransaksi: Math.max(0, actualKunjunganTotal - actualEcTotal),
         },

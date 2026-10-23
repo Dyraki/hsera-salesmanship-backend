@@ -4,6 +4,14 @@ import { IDistrictRepository, DistrictFilter } from '../../../domain/repositorie
 
 export class PrismaDistrictRepository implements IDistrictRepository {
   private toDomain(raw: any): District {
+    const channels = raw.channels
+      ? raw.channels.map((dc: any) => ({
+          id: dc.channel ? dc.channel.id : dc.channelId,
+          kode: dc.channel ? dc.channel.kode : '',
+          nama: dc.channel ? dc.channel.nama : '',
+        }))
+      : [];
+
     return new District({
       id: raw.id,
       ouKode: raw.ouKode,
@@ -14,6 +22,7 @@ export class PrismaDistrictRepository implements IDistrictRepository {
       createdBy: raw.createdBy,
       updatedAt: raw.updatedAt,
       updatedBy: raw.updatedBy,
+      channels,
     });
   }
 
@@ -37,6 +46,13 @@ export class PrismaDistrictRepository implements IDistrictRepository {
 
     const rows = await prisma.mstDistrict.findMany({
       where,
+      include: {
+        channels: {
+          include: {
+            channel: true,
+          },
+        },
+      },
       orderBy: [{ ouKode: 'asc' }, { kode: 'asc' }],
     });
 
@@ -46,6 +62,13 @@ export class PrismaDistrictRepository implements IDistrictRepository {
   async findById(id: string): Promise<District | null> {
     const raw = await prisma.mstDistrict.findUnique({
       where: { id },
+      include: {
+        channels: {
+          include: {
+            channel: true,
+          },
+        },
+      },
     });
     return raw ? this.toDomain(raw) : null;
   }
@@ -55,18 +78,42 @@ export class PrismaDistrictRepository implements IDistrictRepository {
       where: {
         ou_kode_kode_unique: { ouKode, kode },
       },
+      include: {
+        channels: {
+          include: {
+            channel: true,
+          },
+        },
+      },
     });
     return raw ? this.toDomain(raw) : null;
   }
 
   async create(data: Omit<DistrictProps, 'id' | 'createdAt' | 'updatedAt'>): Promise<District> {
+    const createData: any = {
+      ouKode: data.ouKode,
+      kode: data.kode,
+      karyawanId: data.karyawanId,
+      status: data.status || 'AKTIF',
+      createdBy: data.createdBy,
+    };
+
+    if (data.channelIds && data.channelIds.length > 0) {
+      createData.channels = {
+        create: data.channelIds.map((cId) => ({
+          channelId: cId,
+        })),
+      };
+    }
+
     const raw = await prisma.mstDistrict.create({
-      data: {
-        ouKode: data.ouKode,
-        kode: data.kode,
-        karyawanId: data.karyawanId,
-        status: data.status || 'AKTIF',
-        createdBy: data.createdBy,
+      data: createData,
+      include: {
+        channels: {
+          include: {
+            channel: true,
+          },
+        },
       },
     });
     return this.toDomain(raw);
@@ -80,9 +127,30 @@ export class PrismaDistrictRepository implements IDistrictRepository {
     if (data.status !== undefined) updateData.status = data.status;
     if (data.updatedBy !== undefined) updateData.updatedBy = data.updatedBy;
 
+    if (data.channelIds !== undefined) {
+      await prisma.mstDistrictChannel.deleteMany({
+        where: { districtId: id },
+      });
+      if (data.channelIds.length > 0) {
+        await prisma.mstDistrictChannel.createMany({
+          data: data.channelIds.map((cId) => ({
+            districtId: id,
+            channelId: cId,
+          })),
+        });
+      }
+    }
+
     const raw = await prisma.mstDistrict.update({
       where: { id },
       data: updateData,
+      include: {
+        channels: {
+          include: {
+            channel: true,
+          },
+        },
+      },
     });
     return this.toDomain(raw);
   }

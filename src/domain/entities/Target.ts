@@ -3,6 +3,7 @@ export type JenisTarget = 'KUNJUNGAN' | 'BD' | 'EC' | 'FACEUP' | 'VOLUME';
 export interface TargetProps {
   id: string;
   jenisTarget: JenisTarget;
+  ouKode?: string | null;
   districtId?: string | null;
   hariKunjungan?: number | null; // 1..6
   nilai: number;
@@ -21,6 +22,7 @@ export class Target {
 
   get id(): string { return this.props.id; }
   get jenisTarget(): JenisTarget { return this.props.jenisTarget; }
+  get ouKode(): string | null | undefined { return this.props.ouKode; }
   get districtId(): string | null | undefined { return this.props.districtId; }
   get hariKunjungan(): number | null | undefined { return this.props.hariKunjungan; }
   get nilai(): number { return this.props.nilai; }

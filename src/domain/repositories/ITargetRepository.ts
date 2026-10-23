@@ -1,12 +1,15 @@
 import { Target, TargetProps, JenisTarget } from '../entities/Target';
 
 export interface TargetFilter {
+  ouKode?: string;
+  ouKodeIn?: string[];
   districtId?: string;
   districtIdIn?: string[];
   jenisTarget?: JenisTarget;
   status?: string;
   hariKunjungan?: number;
   activeAt?: Date;
+  includeGlobal?: boolean;
 }
 
 export interface ITargetRepository {
@@ -16,7 +19,8 @@ export interface ITargetRepository {
     districtId: string | null,
     jenisTarget: JenisTarget,
     date: Date,
-    hariKunjungan?: number | null
+    hariKunjungan?: number | null,
+    ouKode?: string | null
   ): Promise<Target | null>;
   create(data: Omit<TargetProps, 'id' | 'createdAt' | 'updatedAt'>): Promise<Target>;
   update(id: string, data: Partial<TargetProps>): Promise<Target>;

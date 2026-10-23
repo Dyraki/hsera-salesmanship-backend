@@ -24,6 +24,22 @@ const getWeeklyDistrictReportUC = new GetWeeklyDistrictReportUseCase(
 
 const getAvailableWeeksUC = new GetAvailableWeeksUseCase(rekapRepo);
 
+function getDescendantKodes(unitId: string, allUnits: any[]): string[] {
+  const result: string[] = [];
+  const queue = [unitId];
+  while (queue.length > 0) {
+    const curId = queue.shift()!;
+    const children = allUnits.filter((u: any) => u.parentId === curId);
+    for (const child of children) {
+      if (!result.includes(child.kode)) {
+        result.push(child.kode);
+        queue.push(child.id);
+      }
+    }
+  }
+  return result;
+}
+
 export class ReportController {
   static async getWeeklyDistrictReport(req: Request, res: Response, next: NextFunction) {
     try {
@@ -37,16 +53,23 @@ export class ReportController {
         });
       }
 
-      let targetOu: string | undefined = ouKode ? String(ouKode) : undefined;
+      let targetOu: string | undefined = ouKode && ouKode !== 'all' ? String(ouKode) : undefined;
       let ouKodeIn: string[] | undefined = undefined;
 
-      if (!targetOu && !user.scope.isSuperAdmin) {
-        if (user.scope.unitCode) {
-          targetOu = user.scope.unitCode;
-        } else if (user.scope.allowedUnitIds && user.scope.allowedUnitIds.length > 0) {
-          const allowedOus = await authBackendService.getOperationUnits(user.token);
-          if (allowedOus.length > 0) {
-            ouKodeIn = allowedOus.map((u: any) => u.kode);
+      if (!user.scope.isSuperAdmin) {
+        const allowedOus = await authBackendService.getOperationUnits(user.token);
+        if (allowedOus.length > 0) {
+          ouKodeIn = allowedOus.map((u: any) => u.kode);
+        }
+
+        if (targetOu) {
+          const selectedOu = allowedOus.find((u: any) => u.kode === targetOu);
+          if (selectedOu) {
+            const descendantKodes = getDescendantKodes(selectedOu.id, allowedOus);
+            if (descendantKodes.length > 0) {
+              ouKodeIn = [selectedOu.kode, ...descendantKodes];
+              targetOu = undefined;
+            }
           }
         }
       }
@@ -75,16 +98,23 @@ export class ReportController {
       const { ouKode } = req.query;
       const user = req.user!;
 
-      let targetOu: string | undefined = ouKode ? String(ouKode) : undefined;
+      let targetOu: string | undefined = ouKode && ouKode !== 'all' ? String(ouKode) : undefined;
       let ouKodeIn: string[] | undefined = undefined;
 
-      if (!targetOu && !user.scope.isSuperAdmin) {
-        if (user.scope.unitCode) {
-          targetOu = user.scope.unitCode;
-        } else if (user.scope.allowedUnitIds && user.scope.allowedUnitIds.length > 0) {
-          const allowedOus = await authBackendService.getOperationUnits(user.token);
-          if (allowedOus.length > 0) {
-            ouKodeIn = allowedOus.map((u: any) => u.kode);
+      if (!user.scope.isSuperAdmin) {
+        const allowedOus = await authBackendService.getOperationUnits(user.token);
+        if (allowedOus.length > 0) {
+          ouKodeIn = allowedOus.map((u: any) => u.kode);
+        }
+
+        if (targetOu) {
+          const selectedOu = allowedOus.find((u: any) => u.kode === targetOu);
+          if (selectedOu) {
+            const descendantKodes = getDescendantKodes(selectedOu.id, allowedOus);
+            if (descendantKodes.length > 0) {
+              ouKodeIn = [selectedOu.kode, ...descendantKodes];
+              targetOu = undefined;
+            }
           }
         }
       }

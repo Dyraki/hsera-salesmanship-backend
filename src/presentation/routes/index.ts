@@ -8,6 +8,7 @@ import lockRoutes from './lock.routes';
 import monitoringRoutes from './monitoring.routes';
 import referenceRoutes from './reference.routes';
 import reportRoutes from './report.routes';
+import channelRoutes from './channel.routes';
 
 const apiRouter = Router();
 
@@ -20,5 +21,6 @@ apiRouter.use('/locks', lockRoutes);
 apiRouter.use('/monitoring', monitoringRoutes);
 apiRouter.use('/references', referenceRoutes);
 apiRouter.use('/reports', reportRoutes);
+apiRouter.use('/channels', channelRoutes);
 
 export default apiRouter;
