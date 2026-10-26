@@ -4,6 +4,7 @@ export interface KaryawanRef {
   id: string;
   namaLengkap: string;
   nik?: string;
+  employeeNumber?: string;
   jabatan?: string;
   ouKode?: string;
   operationUnitId?: string;
@@ -57,6 +58,7 @@ export class AuthBackendServiceClient {
         id: k.id,
         namaLengkap: k.legalName || k.namaLengkap || k.nama || k.name || '',
         nik: k.nik,
+        employeeNumber: k.employeeNumber || k.nik || '',
         jabatan: k.jabatan?.nama || k.jabatan || '',
         ouKode: k.operationUnit?.code || k.operationUnit?.kode || k.ouKode,
         operationUnitId: k.operationUnitId || k.operationUnit?.id,

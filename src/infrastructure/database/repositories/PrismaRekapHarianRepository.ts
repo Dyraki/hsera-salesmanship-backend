@@ -66,6 +66,8 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
     }
     if (filter?.kodeMinggu) {
       where.kodeMinggu = filter.kodeMinggu;
+    } else if (filter?.kodeMingguIn && filter.kodeMingguIn.length > 0) {
+      where.kodeMinggu = { in: filter.kodeMingguIn };
     }
     if (filter?.startDate || filter?.endDate) {
       where.tglKunjungan = {};
@@ -275,5 +277,32 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
     });
 
     return rows.map((r) => r.kodeMinggu);
+  }
+
+  async getWeeklyVolumes(kodeMingguIn: number[], ouKode?: string, ouKodeIn?: string[]): Promise<Array<{ kodeMinggu: number; ouKode: string; volumeGg: number }>> {
+    const where: any = {
+      kodeMinggu: { in: kodeMingguIn },
+      status: 'AKTIF',
+    };
+    if (ouKode) {
+      where.ouKode = ouKode;
+    } else if (ouKodeIn && ouKodeIn.length > 0) {
+      where.ouKode = { in: ouKodeIn };
+    }
+
+    const rows = await prisma.trxRekapHarian.findMany({
+      where,
+      select: {
+        kodeMinggu: true,
+        ouKode: true,
+        volumeGg: true,
+      },
+    });
+
+    return rows.map((r) => ({
+      kodeMinggu: r.kodeMinggu,
+      ouKode: r.ouKode,
+      volumeGg: r.volumeGg ? Number(r.volumeGg) : 0,
+    }));
   }
 }

@@ -8,15 +8,18 @@ export class GetDistrictsUseCase {
   async execute(filter?: DistrictFilter, token?: string): Promise<District[]> {
     const districts = await this.districtRepo.findAll(filter);
 
-    // Enrich with salesman names from auth backend
+    // Enrich with salesman names and NIP from auth backend
     const karyawanList = await authBackendService.getKaryawanList(token);
-    const karyawanMap = new Map(karyawanList.map((k) => [k.id, k.namaLengkap]));
+    const karyawanMap = new Map(karyawanList.map((k) => [k.id, k]));
 
     return districts.map((d) => {
-      const name = karyawanMap.get(d.karyawanId) || d.karyawanId;
+      const k = karyawanMap.get(d.karyawanId);
+      const name = k?.namaLengkap || d.karyawanId;
+      const nip = k?.employeeNumber || k?.nik || null;
       return new District({
         ...d.props,
         karyawanName: name,
+        karyawanNip: nip,
       });
     });
   }

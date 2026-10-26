@@ -9,6 +9,7 @@ export interface DistrictProps {
   updatedAt: Date;
   updatedBy?: string | null;
   karyawanName?: string | null; // hydrated from auth backend
+  karyawanNip?: string | null; // hydrated from auth backend (employeeNumber / NIP)
   channels?: Array<{ id: string; kode: string; nama: string }>;
   channelIds?: string[];
 }
@@ -26,6 +27,7 @@ export class District {
   get updatedAt(): Date { return this.props.updatedAt; }
   get updatedBy(): string | null | undefined { return this.props.updatedBy; }
   get karyawanName(): string | null | undefined { return this.props.karyawanName; }
+  get karyawanNip(): string | null | undefined { return this.props.karyawanNip; }
   get channels(): Array<{ id: string; kode: string; nama: string }> { return this.props.channels || []; }
 
   isActive(): boolean {

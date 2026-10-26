@@ -18,6 +18,7 @@ export class GetDistrictByIdUseCase {
     return new District({
       ...district.props,
       karyawanName: karyawan?.namaLengkap || district.karyawanId,
+      karyawanNip: karyawan?.employeeNumber || karyawan?.nik || null,
     });
   }
 }

@@ -230,6 +230,19 @@ describe('Salesmanship API Integration Tests', () => {
     expect(firstDist.days[1].hari).toBe(2); // Tuesday
   });
 
+  it('GET /api/salesmanship/monitoring/weekly with ouKode=AREA-TAG should resolve child branches', async () => {
+    const res = await axios.get(
+      `${BASE_URL}/api/salesmanship/monitoring/weekly?kodeMinggu=202641&ouKode=AREA-TAG`,
+      { headers: { Authorization: `Bearer ${superAdminToken}` } }
+    );
+    expect(res.status).toBe(200);
+    expect(res.data.success).toBe(true);
+    expect(Array.isArray(res.data.data.districts)).toBe(true);
+    // Should include districts from child branches (e.g. CAB-TAG)
+    const ous = res.data.data.districts.map((d: any) => d.ouKode);
+    expect(ous.some((ou: string) => ou === 'CAB-TAG')).toBe(true);
+  });
+
   it('GET /api/salesmanship/monitoring/report/wide-ris should return pivot matrix', async () => {
     const res = await axios.get(
       `${BASE_URL}/api/salesmanship/monitoring/report/wide-ris?kodeMinggu=202641`,

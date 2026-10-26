@@ -6,6 +6,7 @@ export interface RekapHarianFilter {
   districtId?: string;
   karyawanId?: string;
   kodeMinggu?: number;
+  kodeMingguIn?: number[];
   startDate?: Date;
   endDate?: Date;
   statusRekap?: string;
@@ -44,6 +45,7 @@ export interface IRekapHarianRepository {
   findByDateAndDistrict(tglKunjungan: Date, districtId: string): Promise<RekapHarian | null>;
   findByWeek(kodeMinggu: number, districtId?: string, ouKode?: string): Promise<RekapHarian[]>;
   getDistinctWeeks(ouKode?: string, ouKodeIn?: string[]): Promise<number[]>;
+  getWeeklyVolumes(kodeMingguIn: number[], ouKode?: string, ouKodeIn?: string[]): Promise<Array<{ kodeMinggu: number; ouKode: string; volumeGg: number }>>;
   save(data: SaveRekapInput, existingId?: string): Promise<RekapHarian>;
   delete(id: string): Promise<void>;
 }

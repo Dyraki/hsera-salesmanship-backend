@@ -9,6 +9,7 @@ import monitoringRoutes from './monitoring.routes';
 import referenceRoutes from './reference.routes';
 import reportRoutes from './report.routes';
 import channelRoutes from './channel.routes';
+import dashboardRoutes from './dashboard.routes';
 
 const apiRouter = Router();
 
@@ -22,5 +23,6 @@ apiRouter.use('/monitoring', monitoringRoutes);
 apiRouter.use('/references', referenceRoutes);
 apiRouter.use('/reports', reportRoutes);
 apiRouter.use('/channels', channelRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
 
 export default apiRouter;

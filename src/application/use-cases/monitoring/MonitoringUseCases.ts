@@ -359,6 +359,7 @@ export class GetWideRisReportUseCase {
     startDate?: string;
     endDate?: string;
     ouKode?: string;
+    ouKodeIn?: string[];
     districtId?: string;
     token?: string;
   }) {
@@ -380,6 +381,7 @@ export class GetWideRisReportUseCase {
     const rekaps = await this.rekapRepo.findAll({
       districtId: params.districtId,
       ouKode: params.ouKode,
+      ouKodeIn: params.ouKodeIn,
       kodeMinggu: params.kodeMinggu,
       startDate: start,
       endDate: end,
