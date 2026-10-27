@@ -111,13 +111,21 @@ export class GetDashboardUseCase {
   ): Promise<DashboardDTO> {
     const currentYear = tahunParam || 2026;
 
-    // Resolve UUIDs in allowedUnitCodes if needed
+    // Resolve UUIDs in allowedUnitCodes and fetch Operation Units as single source of truth
     let effectiveAllowedCodes = allowedUnitCodes;
-    if (effectiveAllowedCodes && effectiveAllowedCodes.some((c) => c.length === 36 && c.includes('-')) && authToken) {
+    const ouNameMap = new Map<string, string>();
+    if (authToken) {
       try {
         const scopedUnits = await authBackendService.getOperationUnits(authToken);
         if (scopedUnits && scopedUnits.length > 0) {
-          effectiveAllowedCodes = scopedUnits.map((u) => u.kode).filter(Boolean);
+          scopedUnits.forEach((u) => {
+            if (u.kode && u.nama) {
+              ouNameMap.set(u.kode, u.nama);
+            }
+          });
+          if (effectiveAllowedCodes && effectiveAllowedCodes.some((c) => c.length === 36 && c.includes('-'))) {
+            effectiveAllowedCodes = scopedUnits.map((u) => u.kode).filter(Boolean);
+          }
         }
       } catch {
         // keep original
@@ -306,8 +314,9 @@ export class GetDashboardUseCase {
     }
 
     const branchRows: DashboardBranchRow[] = [];
-    const branchNames: Record<string, string> = {
+    const branchNamesFallback: Record<string, string> = {
       'CAB-TAG': 'Cabang Tulungagung',
+      'CAB-TGK': 'Cabang Trenggalek',
       'CAB-TRG': 'Cabang Trenggalek',
       'SMG': 'Cabang Semarang',
       'SLO': 'Cabang Solo',
@@ -334,7 +343,7 @@ export class GetDashboardUseCase {
 
       branchRows.push({
         kode: ou,
-        namaCabang: branchNames[ou] || `Cabang ${ou}`,
+        namaCabang: ouNameMap.get(ou) || branchNamesFallback[ou] || (ou.startsWith('CAB-') ? ou : `Cabang ${ou}`),
         targetCall: bTargetCall,
         realCall: val.realCall,
         kunjunganPercent: Math.round(bKunjPercent * 10) / 10,
@@ -587,7 +596,7 @@ export class GetDashboardUseCase {
         karyawanId: dist.karyawanId,
         namaSalesman: salesmanName,
         districtKode: dist.kode,
-        penempatanCabang: branchNames[dist.ouKode] || `Cabang ${dist.ouKode}`,
+        penempatanCabang: ouNameMap.get(dist.ouKode) || branchNamesFallback[dist.ouKode] || `Cabang ${dist.ouKode}`,
         kunjunganPercent: sKunjPercent,
         realCall: agg.call,
         targetCall: sTargetCall,

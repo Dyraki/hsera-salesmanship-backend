@@ -53,7 +53,7 @@ export class DashboardController {
         }
       }
 
-      const cacheKey = `${tahun || '2026'}_${kuartal || '4'}_${kodeMinggu ?? ''}_${ouKode || 'ALL'}_${(allowedUnitCodes || []).join(',')}_${user?.id || 'public'}`;
+      const cacheKey = `${tahun || '2026'}_${kuartal || '4'}_${kodeMinggu ?? ''}_${ouKode || 'ALL'}_${(allowedUnitCodes || []).join(',')}_${user?.userId || 'public'}`;
       const cached = dashboardCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
         return res.json({
