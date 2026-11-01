@@ -10,6 +10,8 @@ import {
   SaveCallsheetUseCase,
   DeleteCallsheetUseCase,
 } from '../../application/use-cases/callsheet/CallsheetUseCases';
+import { GenerateCallsheetTemplateUseCase } from '../../application/use-cases/callsheet/GenerateCallsheetTemplateUseCase';
+import { ImportCallsheetExcelUseCase } from '../../application/use-cases/callsheet/ImportCallsheetExcelUseCase';
 import { formatDateOnly } from '../../infrastructure/utils/dateIsoUtils';
 
 const rekapRepo = new PrismaRekapHarianRepository();
@@ -35,8 +37,54 @@ const saveCallsheetUC = new SaveCallsheetUseCase(
   lockRepo
 );
 const deleteCallsheetUC = new DeleteCallsheetUseCase(rekapRepo, lockRepo);
+const generateTemplateUC = new GenerateCallsheetTemplateUseCase(brandRepo, districtRepo);
+const importExcelUC = new ImportCallsheetExcelUseCase(districtRepo, brandRepo, lockRepo, saveCallsheetUC);
 
 export class CallsheetController {
+  static async downloadTemplate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { districtId, date } = req.query;
+      const { buffer, filename } = await generateTemplateUC.execute({
+        districtId: districtId ? String(districtId) : undefined,
+        date: date ? String(date) : undefined,
+      });
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(buffer);
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async importExcel(req: Request, res: Response, next: NextFunction) {
+    try {
+      if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ success: false, message: 'File Excel (.xlsx) wajib diunggah.' });
+      }
+
+      const statusRekap = req.body.statusRekap as any;
+      const user = req.user;
+
+      const result = await importExcelUC.execute({
+        fileBuffer: req.file.buffer,
+        userId: user?.userId,
+        statusRekap: statusRekap || 'FINAL',
+        token: user?.token,
+      });
+
+      res.json({
+        success: true,
+        message: `Data callsheet tanggal ${result.summary.tglKunjungan} untuk District ${result.summary.districtKode} berhasil di-import (${result.summary.totalBrandsProcessed} SKU).`,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
   static async getFormData(req: Request, res: Response, next: NextFunction) {
     try {
       const { districtId, date } = req.query;

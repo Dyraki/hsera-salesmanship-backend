@@ -6,6 +6,7 @@ import { PrismaTargetRepository } from '../../infrastructure/database/repositori
 import { PrismaKunciMingguRepository } from '../../infrastructure/database/repositories/PrismaKunciMingguRepository';
 import { GetWeeklyDistrictReportUseCase } from '../../application/use-cases/report/GetWeeklyDistrictReportUseCase';
 import { GetAvailableWeeksUseCase } from '../../application/use-cases/report/GetAvailableWeeksUseCase';
+import { GetSkuSalesReportUseCase } from '../../application/use-cases/report/GetSkuSalesReportUseCase';
 import { authBackendService } from '../../infrastructure/services/AuthBackendServiceClient';
 
 const rekapRepo = new PrismaRekapHarianRepository();
@@ -23,6 +24,13 @@ const getWeeklyDistrictReportUC = new GetWeeklyDistrictReportUseCase(
 );
 
 const getAvailableWeeksUC = new GetAvailableWeeksUseCase(rekapRepo);
+
+const getSkuSalesReportUC = new GetSkuSalesReportUseCase(
+  rekapRepo,
+  brandRepo,
+  districtRepo,
+  targetRepo
+);
 
 function getDescendantKodes(unitId: string, allUnits: any[]): string[] {
   const result: string[] = [];
@@ -120,6 +128,52 @@ export class ReportController {
       }
 
       const result = await getAvailableWeeksUC.execute(targetOu, ouKodeIn);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getSkuSalesReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { year, quarter, cycleType, ouKode, districtId, statusRekap } = req.query;
+      const user = req.user!;
+
+      let targetOu: string | undefined = ouKode && ouKode !== 'all' ? String(ouKode) : undefined;
+      let ouKodeIn: string[] | undefined = undefined;
+
+      if (!user.scope.isSuperAdmin) {
+        const allowedOus = await authBackendService.getOperationUnits(user.token);
+        if (allowedOus.length > 0) {
+          ouKodeIn = allowedOus.map((u: any) => u.kode);
+        }
+
+        if (targetOu) {
+          const selectedOu = allowedOus.find((u: any) => u.kode === targetOu);
+          if (selectedOu) {
+            const descendantKodes = getDescendantKodes(selectedOu.id, allowedOus);
+            if (descendantKodes.length > 0) {
+              ouKodeIn = [selectedOu.kode, ...descendantKodes];
+              targetOu = undefined;
+            }
+          }
+        }
+      }
+
+      const result = await getSkuSalesReportUC.execute({
+        year: year ? Number(year) : undefined,
+        quarter: quarter ? Number(quarter) : undefined,
+        cycleType: cycleType as any,
+        ouKode: targetOu,
+        ouKodeIn,
+        districtId: districtId ? String(districtId) : undefined,
+        statusRekap: statusRekap ? String(statusRekap) : undefined,
+        token: user.token,
+      });
 
       res.json({
         success: true,

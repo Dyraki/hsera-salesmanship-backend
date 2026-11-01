@@ -20,4 +20,10 @@ router.get(
   ReportController.getAvailableWeeks
 );
 
+router.get(
+  '/sku-sales',
+  AclMiddleware(SYSTEM_MENU_IDS.REPORT_SKU, 1),
+  ReportController.getSkuSalesReport
+);
+
 export default router;
