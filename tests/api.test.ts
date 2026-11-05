@@ -130,7 +130,7 @@ describe('Salesmanship API Integration Tests', () => {
         jumlahKunjungan: 40,
         totalEc: 30,
         bdOutlet: 35,
-        volumeGg: 150.5,
+        totalVolume: 0,
         statusRekap: 'FINAL',
         matrix: [
           { brandId: firstBrand.id, notasiKode: 'OOS', nilai: 2 },
@@ -138,6 +138,7 @@ describe('Salesmanship API Integration Tests', () => {
           { brandId: firstBrand.id, notasiKode: 'SL', nilai: 1 },
           { brandId: firstBrand.id, notasiKode: 'SD', nilai: 4 },
           { brandId: firstBrand.id, notasiKode: 'SB', nilai: 0 },
+          { brandId: firstBrand.id, notasiKode: 'BUY', nilai: 0 },
         ],
       },
       { headers: { Authorization: `Bearer ${superAdminToken}` } }

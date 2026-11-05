@@ -361,7 +361,7 @@ export class GetWeeklyDistrictReportUseCase {
         actualKunjunganTotal += r.jumlahKunjungan || 0;
         actualEcTotal += r.totalEc || 0;
         actualBdTotal += r.bdOutlet || 0;
-        actualVolumeTotal += Number(r.volumeGg) || 0;
+        actualVolumeTotal += Number(r.totalVolume ?? r.volumeGg) || 0;
       }
 
       return {

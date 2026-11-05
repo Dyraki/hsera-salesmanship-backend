@@ -216,7 +216,7 @@ export class GetDashboardUseCase {
       actualCall += r.jumlahKunjungan;
       actualEc += r.totalEc;
       actualBd += r.bdOutlet;
-      actualVolumePack += r.volumeGg || 0;
+      actualVolumePack += Number(r.totalVolume ?? r.volumeGg) || 0;
     }
 
     // 7.1. Dynamic Target Resolution: Bottom-Up from District to Branch and Total
@@ -301,7 +301,7 @@ export class GetDashboardUseCase {
       existing.realCall += r.jumlahKunjungan;
       existing.ec += r.totalEc;
       existing.bd += r.bdOutlet;
-      existing.volume += r.volumeGg || 0;
+      existing.volume += Number(r.totalVolume ?? r.volumeGg) || 0;
       branchMap.set(ou, existing);
     }
 
@@ -542,7 +542,7 @@ export class GetDashboardUseCase {
       existing.call += r.jumlahKunjungan;
       existing.ec += r.totalEc;
       existing.bd += r.bdOutlet;
-      existing.vol += r.volumeGg || 0;
+      existing.vol += Number(r.totalVolume ?? r.volumeGg) || 0;
 
       for (const n of r.nilaiList || []) {
         if (n.notasiKode === 'TL') {
@@ -632,8 +632,9 @@ export class GetDashboardUseCase {
       const entry = weekVolumeMap.get(item.kodeMinggu);
       if (entry) {
         const ou = item.ouKode || 'CAB-TAG';
-        entry.volumes[ou] = (entry.volumes[ou] || 0) + item.volumeGg;
-        entry.totalVolume += item.volumeGg;
+        const vol = item.totalVolume;
+        entry.volumes[ou] = (entry.volumes[ou] || 0) + vol;
+        entry.totalVolume += vol;
       }
     }
 

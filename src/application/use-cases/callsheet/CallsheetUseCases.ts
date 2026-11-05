@@ -54,6 +54,7 @@ export interface CallsheetFormResponse {
     jumlahKunjungan: number;
     totalEc: number;
     bdOutlet: number;
+    totalVolume?: number | null;
     volumeGg?: number | null;
     statusRekap: StatusRekap;
     catatan?: string | null;
@@ -167,7 +168,8 @@ export class GetCallsheetFormDataUseCase {
         jumlahKunjungan: existing ? existing.jumlahKunjungan : 0,
         totalEc: existing ? existing.totalEc : 0,
         bdOutlet: existing ? existing.bdOutlet : 0,
-        volumeGg: existing?.volumeGg,
+        totalVolume: existing?.totalVolume,
+        volumeGg: existing?.totalVolume,
         statusRekap: existing ? existing.statusRekap : 'DRAFT',
         catatan: existing?.catatan,
         matrix,
@@ -185,6 +187,7 @@ export interface SaveCallsheetDTO {
   jumlahKunjungan?: number;
   totalEc?: number;
   bdOutlet?: number;
+  totalVolume?: number | null;
   volumeGg?: number | null;
   statusRekap?: StatusRekap;
   catatan?: string | null;
@@ -240,7 +243,7 @@ export class SaveCallsheetUseCase {
     let jumlahKunjungan = dto.jumlahKunjungan || 0;
     let totalEc = dto.totalEc || 0;
     let bdOutlet = dto.bdOutlet !== undefined ? dto.bdOutlet : 0;
-    let volumeGg = dto.volumeGg !== undefined ? dto.volumeGg : null;
+    let totalVolume = dto.totalVolume !== undefined ? dto.totalVolume : (dto.volumeGg !== undefined ? dto.volumeGg : null);
     let statusRekap = dto.statusRekap || 'FINAL';
 
     const preparedNilaiList: Array<{ brandId: string; notasiId: string; nilai: number }> = [];
@@ -252,7 +255,7 @@ export class SaveCallsheetUseCase {
       jumlahKunjungan = 0;
       totalEc = 0;
       bdOutlet = 0;
-      volumeGg = 0;
+      totalVolume = 0;
     } else {
       // Normal: Process Brand x Notasi matrix and auto-calculate BD
       const matrixMap: Record<string, Record<string, number>> = {};
@@ -267,6 +270,9 @@ export class SaveCallsheetUseCase {
       }
 
       // Auto-calculate BD = OOS + SK + SL + SD + SB for each brand
+      let sumBuyFromMatrix = 0;
+      let hasBuyNotation = false;
+
       for (const brandId of Object.keys(matrixMap)) {
         const row = matrixMap[brandId];
         const oos = row['OOS'] || 0;
@@ -276,6 +282,11 @@ export class SaveCallsheetUseCase {
         const sb = row['SB'] || 0;
         const bd = oos + sk + sl + sd + sb;
         row['BD'] = bd; // Force rule: BD auto calculated
+
+        if (row['BUY'] !== undefined) {
+          hasBuyNotation = true;
+          sumBuyFromMatrix += Number(row['BUY']) || 0;
+        }
 
         for (const [notasiKode, val] of Object.entries(row)) {
           const notasiObj = notasiMap.get(notasiKode);
@@ -287,6 +298,13 @@ export class SaveCallsheetUseCase {
             });
           }
         }
+      }
+
+      // Pastikan totalVolume di header selalu sinkron dengan akumulasi notasi BUY di matriks
+      if (hasBuyNotation) {
+        totalVolume = sumBuyFromMatrix;
+      } else if (dto.matrix && Array.isArray(dto.matrix) && dto.matrix.length > 0) {
+        totalVolume = 0;
       }
     }
 
@@ -302,7 +320,7 @@ export class SaveCallsheetUseCase {
       jumlahKunjungan,
       totalEc,
       bdOutlet,
-      volumeGg,
+      totalVolume,
       statusRekap,
       catatan: dto.catatan,
       createdBy: dto.userId,

@@ -7,6 +7,7 @@ import { PrismaKunciMingguRepository } from '../../infrastructure/database/repos
 import { GetWeeklyDistrictReportUseCase } from '../../application/use-cases/report/GetWeeklyDistrictReportUseCase';
 import { GetAvailableWeeksUseCase } from '../../application/use-cases/report/GetAvailableWeeksUseCase';
 import { GetSkuSalesReportUseCase } from '../../application/use-cases/report/GetSkuSalesReportUseCase';
+import { GetKpiTrackingReportUseCase } from '../../application/use-cases/report/GetKpiTrackingReportUseCase';
 import { authBackendService } from '../../infrastructure/services/AuthBackendServiceClient';
 
 const rekapRepo = new PrismaRekapHarianRepository();
@@ -28,6 +29,11 @@ const getAvailableWeeksUC = new GetAvailableWeeksUseCase(rekapRepo);
 const getSkuSalesReportUC = new GetSkuSalesReportUseCase(
   rekapRepo,
   brandRepo,
+  districtRepo,
+  targetRepo
+);
+
+const getKpiTrackingReportUC = new GetKpiTrackingReportUseCase(
   districtRepo,
   targetRepo
 );
@@ -168,6 +174,55 @@ export class ReportController {
         year: year ? Number(year) : undefined,
         quarter: quarter ? Number(quarter) : undefined,
         cycleType: cycleType as any,
+        ouKode: targetOu,
+        ouKodeIn,
+        districtId: districtId ? String(districtId) : undefined,
+        statusRekap: statusRekap ? String(statusRekap) : undefined,
+        token: user.token,
+      });
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getKpiReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { year, quarter, cycleType, selectedWeek, ouKode, districtId, statusRekap } = req.query;
+      const user = req.user!;
+
+      let targetOu: string | undefined = ouKode && ouKode !== 'all' ? String(ouKode) : undefined;
+      let ouKodeIn: string[] | undefined = undefined;
+
+      if (!user.scope.isSuperAdmin) {
+        const allowedOus = await authBackendService.getOperationUnits(user.token);
+        if (allowedOus.length > 0) {
+          ouKodeIn = allowedOus.map((u: any) => u.kode);
+        }
+
+        if (targetOu) {
+          const selectedOu = allowedOus.find((u: any) => u.kode === targetOu);
+          if (selectedOu) {
+            const descendantKodes = getDescendantKodes(selectedOu.id, allowedOus);
+            if (descendantKodes.length > 0) {
+              ouKodeIn = [selectedOu.kode, ...descendantKodes];
+              targetOu = undefined;
+            }
+          }
+        }
+      }
+
+      const parsedSelectedWeek = selectedWeek && selectedWeek !== 'all' ? Number(selectedWeek) : 'all';
+
+      const result = await getKpiTrackingReportUC.execute({
+        year: year ? Number(year) : undefined,
+        quarter: quarter ? Number(quarter) : undefined,
+        cycleType: cycleType as any,
+        selectedWeek: parsedSelectedWeek,
         ouKode: targetOu,
         ouKodeIn,
         districtId: districtId ? String(districtId) : undefined,

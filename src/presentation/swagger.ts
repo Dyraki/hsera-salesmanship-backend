@@ -109,7 +109,7 @@ const options: swaggerJsdoc.Options = {
                 jenisRekap: { type: 'string', example: 'NORMAL' },
                 jumlahKunjungan: { type: 'number', example: 40 },
                 totalEc: { type: 'number', example: 30 },
-                volumeGg: { type: 'number', example: 120 },
+                totalVolume: { type: 'number', example: 120 },
                 matrix: {
                   type: 'object',
                   description: 'BrandId mapping to NotasiKode values',

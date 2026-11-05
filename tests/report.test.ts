@@ -210,4 +210,86 @@ describe('Weekly District Report API Tests', () => {
     expect(data.brandMatrix.summaryRow).toHaveProperty('slPercent');
     expect(data.brandMatrix.summaryRow).toHaveProperty('bdPercent');
   });
+
+  describe('GET /api/salesmanship/reports/kpi-tracking', () => {
+    it('without auth should return 401', async () => {
+      try {
+        await axios.get(`${BASE_URL}/api/salesmanship/reports/kpi-tracking`);
+        expect.unreachable('Should fail with 401');
+      } catch (err: any) {
+        expect(err.response.status).toBe(401);
+      }
+    });
+
+    it('without permission should return 403', async () => {
+      try {
+        await axios.get(`${BASE_URL}/api/salesmanship/reports/kpi-tracking`, {
+          headers: { Authorization: `Bearer ${staffNoPermissionToken}` },
+        });
+        expect.unreachable('Should fail with 403');
+      } catch (err: any) {
+        expect(err.response.status).toBe(403);
+      }
+    });
+
+    it('with valid permission should return complete KPI tracking report', async () => {
+      const res = await axios.get(`${BASE_URL}/api/salesmanship/reports/kpi-tracking`, {
+        headers: { Authorization: `Bearer ${staffWithReportPermissionToken}` },
+        params: {
+          year: 2026,
+          quarter: 4,
+          cycleType: 'ALL',
+        },
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.data.success).toBe(true);
+      expect(res.data.data).toBeDefined();
+
+      const data = res.data.data;
+      expect(data).toHaveProperty('header');
+      expect(data.header.year).toBe(2026);
+      expect(data.header.quarter).toBe(4);
+      expect(data.header.cycleType).toBe('ALL');
+
+      // 4 KPI Summary parameters
+      expect(data).toHaveProperty('summary');
+      expect(data.summary).toHaveProperty('kunjungan');
+      expect(data.summary).toHaveProperty('ec');
+      expect(data.summary).toHaveProperty('bd');
+      expect(data.summary).toHaveProperty('volume');
+
+      // Summary structure check
+      ['kunjungan', 'ec', 'bd', 'volume'].forEach((param) => {
+        const m = data.summary[param];
+        expect(m).toHaveProperty('target');
+        expect(m).toHaveProperty('realisasi');
+        expect(m).toHaveProperty('achievementPercent');
+        expect(m).toHaveProperty('gap');
+        expect(m).toHaveProperty('status');
+        expect(m).toHaveProperty('weeklyAverageReal');
+        expect(m).toHaveProperty('weeklyAverageTarget');
+        expect(m).toHaveProperty('bestWeek');
+        expect(m).toHaveProperty('worstWeek');
+      });
+
+      // Weekly Data Points
+      expect(data).toHaveProperty('weeks');
+      expect(Array.isArray(data.weeks)).toBe(true);
+      expect(data.weeks.length).toBeGreaterThan(0);
+
+      const w0 = data.weeks[0];
+      expect(w0).toHaveProperty('kodeMinggu');
+      expect(w0).toHaveProperty('weekNumber');
+      expect(w0).toHaveProperty('weekLabel');
+      expect(w0).toHaveProperty('kunjungan');
+      expect(w0).toHaveProperty('ec');
+      expect(w0).toHaveProperty('bd');
+      expect(w0).toHaveProperty('volume');
+      expect(w0.kunjungan).toHaveProperty('realisasi');
+      expect(w0.kunjungan).toHaveProperty('target');
+      expect(w0.kunjungan).toHaveProperty('achievementPercent');
+    });
+  });
 });
+

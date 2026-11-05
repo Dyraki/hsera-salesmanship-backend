@@ -24,6 +24,7 @@ export interface RekapHarianProps {
   jumlahKunjungan: number;
   totalEc: number;
   bdOutlet?: number;
+  totalVolume?: number | null;
   volumeGg?: number | null;
   statusRekap: StatusRekap;
   status: string;
@@ -52,7 +53,8 @@ export class RekapHarian {
   get jumlahKunjungan(): number { return this.props.jumlahKunjungan; }
   get totalEc(): number { return this.props.totalEc; }
   get bdOutlet(): number { return this.props.bdOutlet || 0; }
-  get volumeGg(): number | null | undefined { return this.props.volumeGg; }
+  get totalVolume(): number | null | undefined { return this.props.totalVolume ?? this.props.volumeGg; }
+  get volumeGg(): number | null | undefined { return this.props.totalVolume ?? this.props.volumeGg; }
   get statusRekap(): StatusRekap { return this.props.statusRekap; }
   get status(): string { return this.props.status; }
   get catatan(): string | null | undefined { return this.props.catatan; }

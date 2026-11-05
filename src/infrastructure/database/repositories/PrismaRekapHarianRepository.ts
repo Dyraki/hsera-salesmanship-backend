@@ -31,7 +31,7 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
       jumlahKunjungan: raw.jumlahKunjungan,
       totalEc: raw.totalEc,
       bdOutlet: raw.bdOutlet || 0,
-      volumeGg: raw.volumeGg ? Number(raw.volumeGg) : null,
+      totalVolume: raw.totalVolume !== null && raw.totalVolume !== undefined ? Number(raw.totalVolume) : null,
       statusRekap: raw.statusRekap as StatusRekap,
       status: raw.status,
       catatan: raw.catatan,
@@ -190,7 +190,7 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
             jumlahKunjungan: data.jumlahKunjungan,
             totalEc: data.totalEc,
             bdOutlet: data.bdOutlet !== undefined ? data.bdOutlet : 0,
-            volumeGg: data.volumeGg,
+            totalVolume: data.totalVolume,
             statusRekap: data.statusRekap,
             catatan: data.catatan,
             updatedBy: data.updatedBy,
@@ -216,7 +216,7 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
             jumlahKunjungan: data.jumlahKunjungan,
             totalEc: data.totalEc,
             bdOutlet: data.bdOutlet !== undefined ? data.bdOutlet : 0,
-            volumeGg: data.volumeGg,
+            totalVolume: data.totalVolume,
             statusRekap: data.statusRekap,
             catatan: data.catatan,
             createdBy: data.createdBy,
@@ -279,7 +279,7 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
     return rows.map((r) => r.kodeMinggu);
   }
 
-  async getWeeklyVolumes(kodeMingguIn: number[], ouKode?: string, ouKodeIn?: string[]): Promise<Array<{ kodeMinggu: number; ouKode: string; volumeGg: number }>> {
+  async getWeeklyVolumes(kodeMingguIn: number[], ouKode?: string, ouKodeIn?: string[]): Promise<Array<{ kodeMinggu: number; ouKode: string; totalVolume: number }>> {
     const where: any = {
       kodeMinggu: { in: kodeMingguIn },
       status: 'AKTIF',
@@ -295,14 +295,14 @@ export class PrismaRekapHarianRepository implements IRekapHarianRepository {
       select: {
         kodeMinggu: true,
         ouKode: true,
-        volumeGg: true,
+        totalVolume: true,
       },
     });
 
     return rows.map((r) => ({
       kodeMinggu: r.kodeMinggu,
       ouKode: r.ouKode,
-      volumeGg: r.volumeGg ? Number(r.volumeGg) : 0,
+      totalVolume: r.totalVolume !== null && r.totalVolume !== undefined ? Number(r.totalVolume) : 0,
     }));
   }
 }

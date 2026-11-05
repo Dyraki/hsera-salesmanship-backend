@@ -26,4 +26,10 @@ router.get(
   ReportController.getSkuSalesReport
 );
 
+router.get(
+  '/kpi-tracking',
+  AclMiddleware(SYSTEM_MENU_IDS.REPORT_WEEKLY_DISTRICT, 1),
+  ReportController.getKpiReport
+);
+
 export default router;

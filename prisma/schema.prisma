@@ -102,7 +102,7 @@ model TrxRekapHarian {
   jumlahKunjungan Int      @default(0) @map("jumlah_kunjungan")
   totalEc         Int      @default(0) @map("total_ec")
   bdOutlet        Int      @default(0) @map("bd_outlet")
-  volumeGg        Decimal? @map("volume_gg") @db.Decimal(14, 2)
+  totalVolume     Decimal? @map("total_volume") @db.Decimal(14, 2)
   statusRekap     String   @default("DRAFT") @map("status_rekap") @db.VarChar(20) // DRAFT, FINAL
   status          String   @default("AKTIF") @db.VarChar(10) // AKTIF, NONAKTIF
   catatan         String?  @db.Text

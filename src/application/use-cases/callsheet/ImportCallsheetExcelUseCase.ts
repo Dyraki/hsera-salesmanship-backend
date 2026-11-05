@@ -26,6 +26,7 @@ export interface ImportCallsheetResult {
     jumlahKunjungan?: number;
     totalEc?: number;
     bdOutlet?: number;
+    totalVolume?: number;
     volumeGg?: number;
     totalBrandsProcessed: number;
     batchCount?: number;
@@ -263,7 +264,8 @@ export class ImportCallsheetExcelUseCase {
         jumlahKunjungan: saved.jumlahKunjungan,
         totalEc: saved.totalEc,
         bdOutlet: saved.bdOutlet,
-        volumeGg: Number(saved.volumeGg) || 0,
+        totalVolume: Number(saved.totalVolume) || 0,
+        volumeGg: Number(saved.totalVolume) || 0,
         totalBrandsProcessed: brandsProcessedCount,
       },
     };
@@ -371,6 +373,7 @@ export class ImportCallsheetExcelUseCase {
         districtId: g.district.id,
         tglKunjungan: g.tglKunjungan,
         jenisRekap: 'NORMAL',
+        totalVolume: g.totalBuy,
         volumeGg: g.totalBuy,
         statusRekap: params.statusRekap || 'FINAL',
         matrix: g.items,

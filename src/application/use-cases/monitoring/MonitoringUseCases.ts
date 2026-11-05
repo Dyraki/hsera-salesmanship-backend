@@ -45,6 +45,7 @@ export interface WeeklyDistrictMonitoringRow {
     jumlahKunjungan: number;
     totalEc: number;
     bdOutlet: number;
+    totalVolume?: number | null;
     volumeGg?: number | null;
     alasan?: string | null;
   }>;
@@ -132,7 +133,8 @@ export class GetWeeklyMonitoringUseCase {
             jumlahKunjungan: rekap.jumlahKunjungan,
             totalEc: rekap.totalEc,
             bdOutlet: rekap.bdOutlet || 0,
-            volumeGg: rekap.volumeGg,
+            totalVolume: rekap.totalVolume,
+            volumeGg: rekap.totalVolume,
             alasan: rekap.alasan,
           };
         } else {
@@ -146,6 +148,7 @@ export class GetWeeklyMonitoringUseCase {
             jumlahKunjungan: 0,
             totalEc: 0,
             bdOutlet: 0,
+            totalVolume: 0,
             volumeGg: 0,
             alasan: null,
           };
@@ -276,7 +279,7 @@ export class GetWeeklyMonitoringUseCase {
         actualKunjungan += c.jumlahKunjungan || 0;
         actualEc += c.totalEc || 0;
         actualBd += c.bdOutlet || 0;
-        actualVolume += Number(c.volumeGg) || 0;
+        actualVolume += Number(c.totalVolume ?? c.volumeGg) || 0;
       });
 
       const percentKunjungan = targetKunjungan > 0 ? Math.round((actualKunjungan / targetKunjungan) * 100) : 0;
@@ -421,7 +424,8 @@ export class GetWideRisReportUseCase {
         alasan: r.alasan,
         jumlahKunjungan: r.jumlahKunjungan,
         totalEc: r.totalEc,
-        volumeGg: r.volumeGg,
+        totalVolume: r.totalVolume,
+        volumeGg: r.totalVolume,
         statusRekap: r.statusRekap,
         brandValues,
       };

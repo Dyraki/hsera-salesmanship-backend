@@ -31,7 +31,7 @@ export interface SaveRekapInput {
   jumlahKunjungan: number;
   totalEc: number;
   bdOutlet?: number;
-  volumeGg?: number | null;
+  totalVolume?: number | null;
   statusRekap: 'DRAFT' | 'FINAL';
   catatan?: string | null;
   createdBy?: string | null;
@@ -45,7 +45,7 @@ export interface IRekapHarianRepository {
   findByDateAndDistrict(tglKunjungan: Date, districtId: string): Promise<RekapHarian | null>;
   findByWeek(kodeMinggu: number, districtId?: string, ouKode?: string): Promise<RekapHarian[]>;
   getDistinctWeeks(ouKode?: string, ouKodeIn?: string[]): Promise<number[]>;
-  getWeeklyVolumes(kodeMingguIn: number[], ouKode?: string, ouKodeIn?: string[]): Promise<Array<{ kodeMinggu: number; ouKode: string; volumeGg: number }>>;
+  getWeeklyVolumes(kodeMingguIn: number[], ouKode?: string, ouKodeIn?: string[]): Promise<Array<{ kodeMinggu: number; ouKode: string; totalVolume: number }>>;
   save(data: SaveRekapInput, existingId?: string): Promise<RekapHarian>;
   delete(id: string): Promise<void>;
 }

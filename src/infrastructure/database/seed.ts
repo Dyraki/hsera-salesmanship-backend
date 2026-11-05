@@ -49,7 +49,7 @@ async function main() {
     // Harian summary notasi
     { kode: 'TOTAL_KUNJUNGAN', nama: 'Total Kunjungan Harian', levelInput: 'HARIAN', kelompokTampil: 'HARIAN', satuan: 'OUTLET', urutan: 12 },
     { kode: 'TOTAL_EC', nama: 'Total Effective Call Harian', levelInput: 'HARIAN', kelompokTampil: 'HARIAN', satuan: 'OUTLET', urutan: 13 },
-    { kode: 'VOLUME_GG', nama: 'Total Volume GG Harian', levelInput: 'HARIAN', kelompokTampil: 'HARIAN', satuan: 'QTY', urutan: 14 },
+    { kode: 'VOLUME_GG', nama: 'Total Volume Harian', levelInput: 'HARIAN', kelompokTampil: 'HARIAN', satuan: 'QTY', urutan: 14 },
   ];
 
   for (const n of notasiList) {
