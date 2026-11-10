@@ -32,4 +32,10 @@ router.get(
   ReportController.getKpiReport
 );
 
+router.get(
+  '/notation',
+  AclMiddleware(SYSTEM_MENU_IDS.REPORT_NOTASI, 1),
+  ReportController.getNotationReport
+);
+
 export default router;

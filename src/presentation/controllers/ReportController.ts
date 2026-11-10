@@ -8,6 +8,7 @@ import { GetWeeklyDistrictReportUseCase } from '../../application/use-cases/repo
 import { GetAvailableWeeksUseCase } from '../../application/use-cases/report/GetAvailableWeeksUseCase';
 import { GetSkuSalesReportUseCase } from '../../application/use-cases/report/GetSkuSalesReportUseCase';
 import { GetKpiTrackingReportUseCase } from '../../application/use-cases/report/GetKpiTrackingReportUseCase';
+import { GetNotationReportUseCase } from '../../application/use-cases/report/GetNotationReportUseCase';
 import { authBackendService } from '../../infrastructure/services/AuthBackendServiceClient';
 
 const rekapRepo = new PrismaRekapHarianRepository();
@@ -36,6 +37,13 @@ const getSkuSalesReportUC = new GetSkuSalesReportUseCase(
 const getKpiTrackingReportUC = new GetKpiTrackingReportUseCase(
   districtRepo,
   targetRepo
+);
+
+const getNotationReportUC = new GetNotationReportUseCase(
+  getKpiTrackingReportUC,
+  getSkuSalesReportUC,
+  districtRepo,
+  brandRepo
 );
 
 function getDescendantKodes(unitId: string, allUnits: any[]): string[] {
@@ -226,6 +234,56 @@ export class ReportController {
         ouKode: targetOu,
         ouKodeIn,
         districtId: districtId ? String(districtId) : undefined,
+        statusRekap: statusRekap ? String(statusRekap) : undefined,
+        token: user.token,
+      });
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  static async getNotationReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { year, quarter, cycleType, selectedWeek, ouKode, districtId, brandId, statusRekap } = req.query;
+      const user = req.user!;
+
+      let targetOu: string | undefined = ouKode && ouKode !== 'all' ? String(ouKode) : undefined;
+      let ouKodeIn: string[] | undefined = undefined;
+
+      if (!user.scope.isSuperAdmin) {
+        const allowedOus = await authBackendService.getOperationUnits(user.token);
+        if (allowedOus.length > 0) {
+          ouKodeIn = allowedOus.map((u: any) => u.kode);
+        }
+
+        if (targetOu) {
+          const selectedOu = allowedOus.find((u: any) => u.kode === targetOu);
+          if (selectedOu) {
+            const descendantKodes = getDescendantKodes(selectedOu.id, allowedOus);
+            if (descendantKodes.length > 0) {
+              ouKodeIn = [selectedOu.kode, ...descendantKodes];
+              targetOu = undefined;
+            }
+          }
+        }
+      }
+
+      const parsedSelectedWeek = selectedWeek && selectedWeek !== 'all' ? Number(selectedWeek) : 'all';
+
+      const result = await getNotationReportUC.execute({
+        year: year ? Number(year) : undefined,
+        quarter: quarter ? Number(quarter) : undefined,
+        cycleType: cycleType as any,
+        selectedWeek: parsedSelectedWeek,
+        ouKode: targetOu,
+        ouKodeIn,
+        districtId: districtId ? String(districtId) : undefined,
+        brandId: brandId ? String(brandId) : undefined,
         statusRekap: statusRekap ? String(statusRekap) : undefined,
         token: user.token,
       });
