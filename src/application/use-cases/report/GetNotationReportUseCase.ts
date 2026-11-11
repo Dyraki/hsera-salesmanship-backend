@@ -47,9 +47,50 @@ export interface NotationDataPoint {
   tl: number;       // Tidak Laku (Outlet)
   bpj: number;      // Belum Pernah Jual (Outlet)
   sb: number;       // Stok Baru (Outlet)
-  avgStock: number; // Rata-rata Kuantitas Stok (Pack/Outlet)
-  avgBuy: number;   // Rata-rata Kuantitas Pembelian (Pack/Outlet)
+  avgStock: number; // Rata-rata Kuantitas Stok (Pack/Outlet/Brand)
+  avgBuy: number;   // Rata-rata Kuantitas Pembelian (Pack/Outlet/Brand)
   totalCalls: number;
+  brandCount?: number;
+  totalStockPack?: number;
+  totalBuyPack?: number;
+}
+
+export interface BrandNotationAbsoluteItem {
+  urutan: number;
+  brandId: string;
+  kodeBrand: string;
+  namaBrand: string;
+  kategori?: string;
+  callmade: number;        // Denominator kunjungan siap pakai
+  bd: number;              // Jumlah toko BD absolut (oos + sk + sl + sd + sb)
+  totalStockPack: number;  // Total fisik pack stok di toko saat diaudit
+  totalBuyPack: number;    // Total fisik pack pesanan/pembelian toko
+  totalVolPack: number;    // Total volume (pack)
+  sk: number;              // Toko Stok Kurang
+  sl: number;              // Toko Stok Laku
+  sd: number;              // Toko Stok Diam
+  oos: number;             // Toko Out Of Stock
+  sb: number;              // Toko Stok Baru
+  tl: number;              // Toko Tidak Laku
+  bpj: number;             // Toko Belum Pernah Jual
+  avgStockPack: number;    // totalStockPack / callmade
+  avgStokPack?: number;    // Alias untuk kompatibilitas matrix table
+  avgBuyPack: number;      // totalBuyPack / callmade
+  avgBeliPack?: number;    // Alias untuk kompatibilitas matrix table
+  bdPercent: number;       // (bd / callmade) * 100%
+  skPercent: number;       // (sk / callmade) * 100%
+  slPercent: number;       // (sl / callmade) * 100%
+  sdPercent: number;       // (sd / callmade) * 100%
+  oosPercent: number;      // (oos / callmade) * 100%
+  sbPercent: number;       // (sb / callmade) * 100%
+  tlPercent: number;       // (tl / callmade) * 100%
+  bpjPercent: number;      // (bpj / callmade) * 100%
+}
+
+export interface BrandNotationMatrixData {
+  callmade: number;
+  rows: BrandNotationAbsoluteItem[];
+  consolidation: BrandNotationAbsoluteItem;
 }
 
 export interface NotationReportResponse {
@@ -72,6 +113,7 @@ export interface NotationReportResponse {
     volume: KpiSummaryMetric;
   };
   notationTrend: NotationDataPoint[];
+  brandMatrix: BrandNotationMatrixData;
   skuMatrix: {
     weeks: SkuSalesWeekColumn[];
     skuRows: SkuSalesRow[];
@@ -194,10 +236,23 @@ export class GetNotationReportUseCase {
       };
     }
 
+    const activeBrands = allBrands
+      .filter((b) => {
+        if (input.brandId && input.brandId !== 'all') {
+          return b.id === input.brandId;
+        }
+        return true;
+      })
+      .sort((a, b) => (a.urutan ?? 0) - (b.urutan ?? 0));
+
+    const activeBrandIds = activeBrands.map((b) => b.id);
+    const validBrandIds = activeBrandIds.length > 0 ? activeBrandIds : ['00000000-0000-0000-0000-000000000000'];
+    const effectiveBrandCount = Math.max(1, activeBrands.length);
+
     // 4. Build SQL Query for 4 Notation Charts
     const conditions: Prisma.Sql[] = [
       Prisma.sql`r.status = 'AKTIF'`,
-      Prisma.sql`r.kode_minggu IN (${Prisma.join(quarterRange.weekList)})`,
+      Prisma.sql`r.kode_minggu IN (${Prisma.join(filteredWeekNumbers.length > 0 ? filteredWeekNumbers : [0])})`,
     ];
 
     if (input.districtId && input.districtId !== 'all') {
@@ -215,7 +270,7 @@ export class GetNotationReportUseCase {
     const brandFilterSql =
       input.brandId && input.brandId !== 'all'
         ? Prisma.sql`AND n.brand_id = ${input.brandId}::uuid`
-        : Prisma.empty;
+        : Prisma.sql`AND n.brand_id IN (${Prisma.join(validBrandIds.map((id) => Prisma.sql`${id}::uuid`))})`;
 
     const isSingleWeek = input.selectedWeek && input.selectedWeek !== 'all';
     const targetSingleKodeMinggu = isSingleWeek ? Number(input.selectedWeek) : null;
@@ -304,9 +359,9 @@ export class GetNotationReportUseCase {
         const tl = Math.round(d ? d.tl : 0);
         const bpj = Math.round(d ? d.bpj : 0);
         const sb = Math.round(d ? d.sb : 0);
-        // Stock dan Buy dibagi Callmade (total kunjungan), bukan angka absolut
-        const avgStock = d && calls > 0 ? Math.round((d.stockQty / calls) * 10) / 10 : 0;
-        const avgBuy = d && calls > 0 ? Math.round((d.buyQty / calls) * 10) / 10 : 0;
+        // Stock dan Buy dibagi Callmade dan jumlah brand aktif (Rata-rata per brand per kunjungan)
+        const avgStock = d && calls > 0 ? Math.round((d.stockQty / (calls * effectiveBrandCount)) * 10) / 10 : 0;
+        const avgBuy = d && calls > 0 ? Math.round((d.buyQty / (calls * effectiveBrandCount)) * 10) / 10 : 0;
 
         const isPastDay =
           targetSingleKodeMinggu < currentIso.kodeMinggu ||
@@ -336,6 +391,9 @@ export class GetNotationReportUseCase {
           avgStock,
           avgBuy,
           totalCalls: calls,
+          brandCount: effectiveBrandCount,
+          totalStockPack: Math.round(d ? d.stockQty : 0),
+          totalBuyPack: Math.round(d ? d.buyQty : 0),
         });
       }
     } else {
@@ -419,9 +477,9 @@ export class GetNotationReportUseCase {
         const bpj = Math.round(w ? w.bpj : 0);
         const sb = Math.round(w ? w.sb : 0);
 
-        // Stock dan Buy dibagi Callmade (total kunjungan), bukan lagi angka absolut
-        const avgStock = w && calls > 0 ? Math.round((w.stockQty / calls) * 10) / 10 : 0;
-        const avgBuy = w && calls > 0 ? Math.round((w.buyQty / calls) * 10) / 10 : 0;
+        // Stock dan Buy dibagi Callmade dan jumlah brand aktif (Rata-rata per brand per kunjungan)
+        const avgStock = w && calls > 0 ? Math.round((w.stockQty / (calls * effectiveBrandCount)) * 10) / 10 : 0;
+        const avgBuy = w && calls > 0 ? Math.round((w.buyQty / (calls * effectiveBrandCount)) * 10) / 10 : 0;
 
         const isPastWeek = km < currentIso.kodeMinggu;
         const isCurrentWeek = km === currentIso.kodeMinggu;
@@ -450,9 +508,233 @@ export class GetNotationReportUseCase {
           avgStock,
           avgBuy,
           totalCalls: calls,
+          brandCount: effectiveBrandCount,
+          totalStockPack: Math.round(w ? w.stockQty : 0),
+          totalBuyPack: Math.round(w ? w.buyQty : 0),
         };
       });
     }
+
+    // 5. Build Brand Notation Matrix (Absolute Values & Callmade Divider)
+    const targetWeeksForBrandMatrix =
+      isSingleWeek && targetSingleKodeMinggu
+        ? [targetSingleKodeMinggu]
+        : filteredWeekNumbers;
+
+    const brandMatrixConditions: Prisma.Sql[] = [
+      Prisma.sql`r.status = 'AKTIF'`,
+      Prisma.sql`r.kode_minggu IN (${Prisma.join(targetWeeksForBrandMatrix)})`,
+    ];
+
+    if (input.districtId && input.districtId !== 'all') {
+      brandMatrixConditions.push(Prisma.sql`r.district_id = ${input.districtId}::uuid`);
+    } else if (input.ouKode && input.ouKode !== 'all') {
+      brandMatrixConditions.push(Prisma.sql`r.ou_kode = ${input.ouKode}`);
+    } else if (input.ouKodeIn && input.ouKodeIn.length > 0) {
+      brandMatrixConditions.push(Prisma.sql`r.ou_kode IN (${Prisma.join(input.ouKodeIn)})`);
+    }
+
+    if (input.statusRekap) {
+      brandMatrixConditions.push(Prisma.sql`r.status_rekap = ${input.statusRekap}`);
+    }
+
+    const brandMatrixWhereSql = Prisma.sql`WHERE ${Prisma.join(brandMatrixConditions, ' AND ')}`;
+
+    interface RawTotalCalls {
+      totalCalls: number;
+    }
+
+    const rawCalls = await prisma.$queryRaw<RawTotalCalls[]>(Prisma.sql`
+      SELECT COALESCE(SUM(r.jumlah_kunjungan), 0)::float as "totalCalls"
+      FROM trx_rekap_harian r
+      ${brandMatrixWhereSql}
+    `);
+    const totalCalls = Math.round(rawCalls[0]?.totalCalls || 0);
+    const callmadeDiv = Math.max(1, totalCalls);
+
+    interface RawBrandNotation {
+      brandId: string;
+      sk: number;
+      sl: number;
+      oos: number;
+      sd: number;
+      tl: number;
+      bpj: number;
+      sb: number;
+      stockQty: number;
+      buyQty: number;
+    }
+
+    const rawBrandNotations = await prisma.$queryRaw<RawBrandNotation[]>(Prisma.sql`
+      SELECT 
+        n.brand_id as "brandId",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('SK', 'Sk', 'sk') THEN n.nilai ELSE 0 END), 0)::float as "sk",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('SL', 'Sl', 'sl') THEN n.nilai ELSE 0 END), 0)::float as "sl",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('OOS', 'Oos', 'oos') THEN n.nilai ELSE 0 END), 0)::float as "oos",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('SD', 'Sd', 'sd') THEN n.nilai ELSE 0 END), 0)::float as "sd",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('TL', 'Tl', 'tl') THEN n.nilai ELSE 0 END), 0)::float as "tl",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('BPJ', 'Bpj', 'bpj') THEN n.nilai ELSE 0 END), 0)::float as "bpj",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('SB', 'Sb', 'sb') THEN n.nilai ELSE 0 END), 0)::float as "sb",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('STOCK', 'Stock', 'stock') THEN n.nilai ELSE 0 END), 0)::float as "stockQty",
+        COALESCE(SUM(CASE WHEN notasi.kode IN ('BUY', 'Buy', 'buy') THEN n.nilai ELSE 0 END), 0)::float as "buyQty"
+      FROM trx_rekap_harian_nilai n
+      JOIN trx_rekap_harian r ON r.id = n.rekap_id
+      JOIN mst_notasi notasi ON notasi.id = n.notasi_id
+      ${brandMatrixWhereSql}
+      GROUP BY n.brand_id
+    `);
+
+    const brandMap = new Map<string, RawBrandNotation>();
+    rawBrandNotations.forEach((item) => brandMap.set(item.brandId, item));
+
+    let sumBd = 0;
+    let sumStock = 0;
+    let sumBuy = 0;
+    let sumVol = 0;
+    let sumSk = 0;
+    let sumSl = 0;
+    let sumSd = 0;
+    let sumOos = 0;
+    let sumSb = 0;
+    let sumTl = 0;
+    let sumBpj = 0;
+
+    let grandBdSum = 0;
+    let grandStockSum = 0;
+    let grandBuySum = 0;
+    let grandSkSum = 0;
+    let grandSlSum = 0;
+    let grandSdSum = 0;
+    let grandOosSum = 0;
+    let grandSbSum = 0;
+    let grandTlSum = 0;
+    let grandBpjSum = 0;
+
+    const brandRows: BrandNotationAbsoluteItem[] = activeBrands.map((b, idx) => {
+      const data = brandMap.get(b.id) || {
+        brandId: b.id,
+        sk: 0,
+        sl: 0,
+        oos: 0,
+        sd: 0,
+        tl: 0,
+        bpj: 0,
+        sb: 0,
+        stockQty: 0,
+        buyQty: 0,
+      };
+
+      const sk = Math.round(data.sk);
+      const sl = Math.round(data.sl);
+      const sd = Math.round(data.sd);
+      const oos = Math.round(data.oos);
+      const sb = Math.round(data.sb);
+      const tl = Math.round(data.tl);
+      const bpj = Math.round(data.bpj);
+      const bd = oos + sk + sl + sd + sb;
+      const totalStockPack = Math.round(data.stockQty);
+      const totalBuyPack = Math.round(data.buyQty);
+      const totalVolPack = totalBuyPack;
+
+      const avgStockPack = totalCalls > 0 ? Math.round((totalStockPack / callmadeDiv) * 10) / 10 : 0;
+      const avgBuyPack = totalCalls > 0 ? Math.round((totalBuyPack / callmadeDiv) * 10) / 10 : 0;
+      const bdPercent = totalCalls > 0 ? Math.min(100, Math.round((bd / callmadeDiv) * 1000) / 10) : 0;
+      const skPercent = totalCalls > 0 ? Math.min(100, Math.round((sk / callmadeDiv) * 1000) / 10) : 0;
+      const slPercent = totalCalls > 0 ? Math.min(100, Math.round((sl / callmadeDiv) * 1000) / 10) : 0;
+      const sdPercent = totalCalls > 0 ? Math.min(100, Math.round((sd / callmadeDiv) * 1000) / 10) : 0;
+      const oosPercent = totalCalls > 0 ? Math.min(100, Math.round((oos / callmadeDiv) * 1000) / 10) : 0;
+      const sbPercent = totalCalls > 0 ? Math.min(100, Math.round((sb / callmadeDiv) * 1000) / 10) : 0;
+      const tlPercent = totalCalls > 0 ? Math.min(100, Math.round((tl / callmadeDiv) * 1000) / 10) : 0;
+      const bpjPercent = totalCalls > 0 ? Math.min(100, Math.round((bpj / callmadeDiv) * 1000) / 10) : 0;
+
+      sumBd += bd;
+      sumStock += totalStockPack;
+      sumBuy += totalBuyPack;
+      sumVol += totalVolPack;
+      sumSk += sk;
+      sumSl += sl;
+      sumSd += sd;
+      sumOos += oos;
+      sumSb += sb;
+      sumTl += tl;
+      sumBpj += bpj;
+
+      grandBdSum += bdPercent;
+      grandStockSum += avgStockPack;
+      grandBuySum += avgBuyPack;
+      grandSkSum += skPercent;
+      grandSlSum += slPercent;
+      grandSdSum += sdPercent;
+      grandOosSum += oosPercent;
+      grandSbSum += sbPercent;
+      grandTlSum += tlPercent;
+      grandBpjSum += bpjPercent;
+
+      return {
+        urutan: b.urutan ?? idx + 1,
+        brandId: b.id,
+        kodeBrand: b.kode,
+        namaBrand: b.nama,
+        kategori: b.kategori,
+        callmade: totalCalls,
+        bd,
+        totalStockPack,
+        totalBuyPack,
+        totalVolPack,
+        sk,
+        sl,
+        sd,
+        oos,
+        sb,
+        tl,
+        bpj,
+        avgStockPack,
+        avgStokPack: avgStockPack,
+        avgBuyPack,
+        avgBeliPack: avgBuyPack,
+        bdPercent,
+        skPercent,
+        slPercent,
+        sdPercent,
+        oosPercent,
+        sbPercent,
+        tlPercent,
+        bpjPercent,
+      };
+    });
+
+    const brandCount = Math.max(1, brandRows.length);
+    const consolidation: BrandNotationAbsoluteItem = {
+      urutan: 0,
+      brandId: 'ALL',
+      kodeBrand: 'ALL',
+      namaBrand: `KONSOLIDASI ${brandCount} BRAND INTI`,
+      kategori: 'ALL',
+      callmade: totalCalls,
+      bd: sumBd,
+      totalStockPack: sumStock,
+      totalBuyPack: sumBuy,
+      totalVolPack: sumVol,
+      sk: sumSk,
+      sl: sumSl,
+      sd: sumSd,
+      oos: sumOos,
+      sb: sumSb,
+      tl: sumTl,
+      bpj: sumBpj,
+      avgStockPack: Math.round((grandStockSum / brandCount) * 10) / 10,
+      avgStokPack: Math.round((grandStockSum / brandCount) * 10) / 10,
+      avgBuyPack: Math.round((grandBuySum / brandCount) * 10) / 10,
+      avgBeliPack: Math.round((grandBuySum / brandCount) * 10) / 10,
+      bdPercent: Math.round((grandBdSum / brandCount) * 10) / 10,
+      skPercent: Math.round((grandSkSum / brandCount) * 10) / 10,
+      slPercent: Math.round((grandSlSum / brandCount) * 10) / 10,
+      sdPercent: Math.round((grandSdSum / brandCount) * 10) / 10,
+      oosPercent: Math.round((grandOosSum / brandCount) * 10) / 10,
+      sbPercent: Math.round((grandSbSum / brandCount) * 10) / 10,
+      tlPercent: Math.round((grandTlSum / brandCount) * 10) / 10,
+      bpjPercent: Math.round((grandBpjSum / brandCount) * 10) / 10,
+    };
 
     return {
       header: {
@@ -469,6 +751,11 @@ export class GetNotationReportUseCase {
       },
       summary: kpiReport.summary,
       notationTrend,
+      brandMatrix: {
+        callmade: totalCalls,
+        rows: brandRows,
+        consolidation,
+      },
       skuMatrix: {
         weeks: skuReport.weeks,
         skuRows: filteredSkuRows,

@@ -291,5 +291,81 @@ describe('Weekly District Report API Tests', () => {
       expect(w0.kunjungan).toHaveProperty('achievementPercent');
     });
   });
+
+  describe('GET /api/salesmanship/reports/notation', () => {
+    it('with super admin should return complete report structure including brandMatrix with absolute counts & callmade', async () => {
+      const res = await axios.get(`${BASE_URL}/api/salesmanship/reports/notation`, {
+        headers: { Authorization: `Bearer ${superAdminToken}` },
+        params: {
+          year: 2026,
+          quarter: 4,
+          cycleType: 'ALL',
+        },
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.data.success).toBe(true);
+      expect(res.data.data).toBeDefined();
+
+      const data = res.data.data;
+      expect(data).toHaveProperty('header');
+      expect(data).toHaveProperty('summary');
+      expect(data).toHaveProperty('notationTrend');
+      expect(data).toHaveProperty('brandMatrix');
+      expect(data).toHaveProperty('skuMatrix');
+
+      // Validate brandMatrix
+      expect(data.brandMatrix).toHaveProperty('callmade');
+      expect(typeof data.brandMatrix.callmade).toBe('number');
+      expect(Array.isArray(data.brandMatrix.rows)).toBe(true);
+      expect(data.brandMatrix).toHaveProperty('consolidation');
+
+      if (data.brandMatrix.rows.length > 0) {
+        const row0 = data.brandMatrix.rows[0];
+        expect(row0).toHaveProperty('kodeBrand');
+        expect(row0).toHaveProperty('namaBrand');
+        expect(row0).toHaveProperty('callmade');
+        expect(row0).toHaveProperty('bd');
+        expect(row0).toHaveProperty('totalStockPack');
+        expect(row0).toHaveProperty('totalBuyPack');
+        expect(row0).toHaveProperty('totalVolPack');
+        expect(row0).toHaveProperty('sk');
+        expect(row0).toHaveProperty('sl');
+        expect(row0).toHaveProperty('sd');
+        expect(row0).toHaveProperty('oos');
+        expect(row0).toHaveProperty('sb');
+        expect(row0).toHaveProperty('tl');
+        expect(row0).toHaveProperty('bpj');
+        expect(row0).toHaveProperty('avgStockPack');
+        expect(row0).toHaveProperty('avgStokPack');
+        expect(row0).toHaveProperty('avgBuyPack');
+        expect(row0).toHaveProperty('avgBeliPack');
+        expect(row0).toHaveProperty('skPercent');
+      }
+
+      // Validate consolidation
+      const cons = data.brandMatrix.consolidation;
+      expect(cons.kodeBrand).toBe('ALL');
+      expect(cons).toHaveProperty('callmade');
+      expect(cons).toHaveProperty('bd');
+      expect(cons).toHaveProperty('totalStockPack');
+      expect(cons).toHaveProperty('totalBuyPack');
+      expect(cons).toHaveProperty('totalVolPack');
+      expect(cons).toHaveProperty('sk');
+      expect(cons).toHaveProperty('sl');
+      expect(cons).toHaveProperty('avgStockPack');
+      expect(cons).toHaveProperty('avgStokPack');
+      expect(cons).toHaveProperty('avgBuyPack');
+      expect(cons).toHaveProperty('avgBeliPack');
+
+      // Validate notationTrend properties
+      if (data.notationTrend.length > 0) {
+        const trend0 = data.notationTrend[0];
+        expect(trend0).toHaveProperty('brandCount');
+        expect(trend0).toHaveProperty('avgStock');
+        expect(trend0).toHaveProperty('avgBuy');
+      }
+    });
+  });
 });
 
