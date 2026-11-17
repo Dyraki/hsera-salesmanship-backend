@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { DistrictController } from '../controllers/DistrictController';
 import { AuthMiddleware } from '../middlewares/AuthMiddleware';
 import { AclMiddleware } from '../middlewares/AclMiddleware';
-import { SYSTEM_MENU_IDS } from '../../domain/constants/MenuConstants';
+import { SYSTEM_MENU_IDS, SALESMANSHIP_DISTRICT_READ_MENUS } from '../../domain/constants/MenuConstants';
 
 const router = Router();
 
@@ -10,13 +10,13 @@ router.use(AuthMiddleware);
 
 router.get(
   '/',
-  AclMiddleware(SYSTEM_MENU_IDS.TERITORY_MANAGEMENT, 1),
+  AclMiddleware(SALESMANSHIP_DISTRICT_READ_MENUS, 1),
   DistrictController.getAll
 );
 
 router.get(
   '/:id',
-  AclMiddleware(SYSTEM_MENU_IDS.TERITORY_MANAGEMENT, 1),
+  AclMiddleware(SALESMANSHIP_DISTRICT_READ_MENUS, 1),
   DistrictController.getById
 );
 
